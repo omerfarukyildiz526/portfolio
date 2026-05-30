@@ -1,0 +1,22 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(npx next *)",
+      "Bash(start http://localhost:3000)",
+      "Bash(npm install *)",
+      "Bash(npx tsc *)",
+      "Bash(npm run *)",
+      "Read(//tmp/**)",
+      "PowerShell(Get-ChildItem \"C:\\\\Users\\\\omer.yildiz\\\\Desktop\\\\PORTFOLYOM\" -Depth 2 | Where-Object { $_.Extension -match '\\\\.\\(tsx|jsx|css|ts\\)$' -and $_.FullName -notmatch 'node_modules' })",
+      "PowerShell(Get-ChildItem \"C:\\\\Users\\\\omer.yildiz\\\\Desktop\\\\PORTFOLYOM\" -Recurse | Where-Object { $_.Extension -match '\\\\.\\(tsx|jsx|css|ts|js\\)$' -and $_.FullName -notmatch 'node_modules' } | Select-Object FullName)",
+      "PowerShell(Get-ChildItem \"C:\\\\Users\\\\omer.yildiz\\\\Desktop\\\\PORTFOLYOM\\\\backend-portfolio\\\\src\" -Recurse | Where-Object { $_.Extension -match '\\\\.\\(tsx|jsx|css\\)$' } | Select-Object FullName)",
+      "PowerShell(Get-ChildItem -Path \"C:\\\\Users\\\\omer.yildiz\\\\Desktop\\\\PORTFOLYOM\\\\backend-portfolio\\\\src\" -Recurse -Force | ForEach-Object { $_.FullName })",
+      "Bash(mkdir -p \"C:/Users/omer.yildiz/Desktop/PORTFOLYOM/backend-portfolio/src/app/feed/[slug]\")",
+      "Bash(dir \"C:\\\\Users\\\\omer.yildiz\\\\Desktop\\\\PORTFOLYOM\\\\backend-portfolio\\\\public\")",
+      "PowerShell(Get-NetTCPConnection -State Listen -LocalPort 3000 -ErrorAction SilentlyContinue)"
+    ],
+    "additionalDirectories": [
+      "C:\\Users\\omer.yildiz\\Desktop\\PORTFOLYOM\\backend-portfolio\\src\\app\\feed"
+    ]
+  }
+}
