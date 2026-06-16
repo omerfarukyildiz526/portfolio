@@ -1,7 +1,24 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
+
+type MarqueeDir = 'normal' | 'reverse';
+
+interface Spark {
+  id: number;
+  x: number; y: number;
+  dx: number; dy: number;
+  color: string; size: number;
+}
+
+interface Smoke {
+  id: number;
+  x: number;
+  dx: number;
+  dy: number;
+  size: number;
+}
 
 const RESPONSIBILITIES = [
   { icon: '⚙', title: 'REST API Tasarımı',       tags: ['GET', 'POST', 'PUT', 'DELETE'] },
@@ -82,6 +99,60 @@ function TechCard({
 }
 
 export default function SkillsPage() {
+  const [dir,    setDir]    = useState<MarqueeDir>('normal');
+  const [speed,  setSpeed]  = useState(22);
+  const [sparks, setSparks] = useState<Spark[]>([]);
+  const [smokes, setSmokes] = useState<Smoke[]>([]);
+  const sparkId = useRef(0);
+  const smokeId = useRef(0);
+
+  const COLORS = ['#ff8c42', '#fbbf24', '#ff4444', '#ffffff', '#ffdd00', '#ff6b6b'];
+  const heatIntensity = speed <= 1 ? Math.min(1, (1 - speed) / 0.8) : 0;
+
+  useEffect(() => {
+    if (speed > 1.5) { setSparks([]); return; }
+
+    const interval = setInterval(() => {
+      const count = speed <= 0.3 ? 4 : speed <= 0.6 ? 3 : speed <= 1 ? 2 : 1;
+      for (let n = 0; n < count; n++) {
+        const edge  = Math.random() > 0.5 ? -4 : 104;
+        const isTop = edge < 0;
+        const newSpark: Spark = {
+          id:    sparkId.current++,
+          x:     Math.random() * 100,
+          y:     edge,
+          dx:    (Math.random() - 0.5) * 130,
+          dy:    isTop ? -(35 + Math.random() * 90) : (35 + Math.random() * 90),
+          color: COLORS[Math.floor(Math.random() * COLORS.length)],
+          size:  Math.random() * 6 + 2,
+        };
+        setSparks((prev) => [...prev.slice(-70), newSpark]);
+        setTimeout(() => setSparks((prev) => prev.filter((s) => s.id !== newSpark.id)), 850);
+      }
+    }, Math.max(35, speed * 300));
+
+    return () => clearInterval(interval);
+  }, [speed]);
+
+  useEffect(() => {
+    if (speed > 0.8) { setSmokes([]); return; }
+
+    const interval = setInterval(() => {
+      const sz = 14 + Math.random() * 18;
+      const newSmoke: Smoke = {
+        id:   smokeId.current++,
+        x:    8 + Math.random() * 84,
+        dx:   (Math.random() - 0.5) * 45,
+        dy:   -(55 + Math.random() * 55),
+        size: sz,
+      };
+      setSmokes((prev) => [...prev.slice(-14), newSmoke]);
+      setTimeout(() => setSmokes((prev) => prev.filter((s) => s.id !== newSmoke.id)), 2800);
+    }, Math.max(110, speed * 700));
+
+    return () => clearInterval(interval);
+  }, [speed]);
+
   return (
     <main className="min-h-screen pt-20 pb-16 px-5 md:px-14 lg:px-24 xl:px-32">
       <div className="max-w-[1400px] mx-auto w-full">
@@ -129,9 +200,161 @@ export default function SkillsPage() {
 
         {/* ── Marquee: Görevler ── */}
         <div className="mb-5">
-          <p className="text-[9px] font-mono uppercase tracking-[0.4em] text-white/25 mb-3">// BACKEND GELİŞTİRİCİNİN GÖREVLERİ</p>
+          <div className="flex items-center justify-between mb-3">
+            <p className="text-[9px] font-mono uppercase tracking-[0.4em] text-white/25">// BACKEND GELİŞTİRİCİNİN GÖREVLERİ</p>
+            <div className="flex items-center gap-1" style={{ fontFamily: 'var(--font-jetbrains, monospace)' }}>
+              {/* Yön */}
+              <button
+                onClick={() => setDir('reverse')}
+                title="Sola"
+                className="w-6 h-6 rounded flex items-center justify-center transition-all duration-150"
+                style={{
+                  background: dir === 'reverse' ? 'rgba(68,136,255,0.15)' : 'rgba(255,255,255,0.04)',
+                  border:     dir === 'reverse' ? '1px solid rgba(68,136,255,0.35)' : '1px solid rgba(255,255,255,0.08)',
+                  color:      dir === 'reverse' ? '#4488ff' : 'rgba(255,255,255,0.3)',
+                }}
+              >
+                <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><path d="M19 12H5m7-7-7 7 7 7" /></svg>
+              </button>
+              <button
+                onClick={() => setDir('normal')}
+                title="Sağa"
+                className="w-6 h-6 rounded flex items-center justify-center transition-all duration-150"
+                style={{
+                  background: dir === 'normal' ? 'rgba(68,136,255,0.15)' : 'rgba(255,255,255,0.04)',
+                  border:     dir === 'normal' ? '1px solid rgba(68,136,255,0.35)' : '1px solid rgba(255,255,255,0.08)',
+                  color:      dir === 'normal' ? '#4488ff' : 'rgba(255,255,255,0.3)',
+                }}
+              >
+                <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><path d="M5 12h14m-7-7 7 7-7 7" /></svg>
+              </button>
+
+              {/* Ayraç */}
+              <span className="w-px h-4 mx-1" style={{ background: 'rgba(255,255,255,0.08)' }} />
+
+              {/* Hız */}
+              <button
+                onClick={() => setSpeed((s) => Math.min(60, s + 2))}
+                title="Yavaşlat"
+                className="w-6 h-6 rounded flex items-center justify-center transition-all duration-150 text-[13px] font-bold"
+                style={{ background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.08)', color: 'rgba(255,255,255,0.3)' }}
+              >
+                −
+              </button>
+              <span className="text-[9px] w-8 text-center" style={{ color: 'rgba(255,255,255,0.25)' }}>
+                {speed <= 0.3 ? '💀' : speed <= 1 ? '🔥' : `${Math.round(22 / speed * 10) / 10}x`}
+              </span>
+              <button
+                onClick={() => setSpeed((s) => +Math.max(0.2, s > 2 ? s - 2 : s - 0.2).toFixed(1))}
+                title="Hızlandır"
+                className="w-6 h-6 rounded flex items-center justify-center transition-all duration-150 text-[13px] font-bold"
+                style={{ background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.08)', color: 'rgba(255,255,255,0.3)' }}
+              >
+                +
+              </button>
+            </div>
+          </div>
+          <div
+            className="relative overflow-visible"
+            style={{
+              transition: 'box-shadow 0.5s ease',
+              boxShadow: heatIntensity > 0
+                ? [
+                    `0 0 ${Math.round(heatIntensity * 20)}px rgba(255,100,0,${(heatIntensity * 0.55).toFixed(2)})`,
+                    `0 0 ${Math.round(heatIntensity * 55)}px rgba(255,50,0,${(heatIntensity * 0.32).toFixed(2)})`,
+                    `0 0 ${Math.round(heatIntensity * 110)}px rgba(200,20,0,${(heatIntensity * 0.18).toFixed(2)})`,
+                  ].join(', ')
+                : 'none',
+            }}
+          >
+            {/* Kıvılcımlar */}
+            <AnimatePresence>
+              {sparks.map((s) => (
+                <motion.div
+                  key={s.id}
+                  className="absolute pointer-events-none rounded-full z-10"
+                  style={{
+                    left:      `${s.x}%`,
+                    top:       `${s.y}%`,
+                    width:      s.size,
+                    height:     s.size,
+                    background: s.color,
+                    boxShadow:  `0 0 ${s.size * 3}px ${s.color}, 0 0 ${s.size * 7}px ${s.color}66`,
+                  }}
+                  initial={{ x: 0, y: 0, opacity: 1, scale: 1 }}
+                  animate={{ x: s.dx, y: s.dy, opacity: 0, scale: 0.15 }}
+                  exit={{}}
+                  transition={{ duration: 0.8, ease: [0.2, 0, 0.8, 1] }}
+                />
+              ))}
+            </AnimatePresence>
+
+            {/* Duman */}
+            <AnimatePresence>
+              {smokes.map((sm) => (
+                <motion.div
+                  key={sm.id}
+                  className="absolute pointer-events-none z-20 rounded-full"
+                  style={{
+                    left:       `${sm.x}%`,
+                    top:        '-4%',
+                    width:       sm.size,
+                    height:      sm.size,
+                    background: 'radial-gradient(circle, rgba(180,155,130,0.22) 0%, rgba(120,100,80,0.07) 55%, transparent 100%)',
+                    filter:     `blur(${sm.size * 0.45}px)`,
+                  }}
+                  initial={{ x: 0, y: 0, opacity: 0.8, scale: 1 }}
+                  animate={{ x: sm.dx, y: sm.dy, opacity: 0, scale: 3.5 }}
+                  exit={{}}
+                  transition={{ duration: 2.4, ease: [0.1, 0.25, 0.55, 1] }}
+                />
+              ))}
+            </AnimatePresence>
+
+            {/* Ateş çizgisi — üst kenar */}
+            {heatIntensity > 0 && (
+              <motion.div
+                className="absolute inset-x-0 top-0 z-[25] pointer-events-none"
+                style={{ height: 3 }}
+                animate={{
+                  boxShadow: [
+                    `0 0 6px 2px rgba(255,80,0,${(heatIntensity * 0.7).toFixed(2)}), 0 0 18px 5px rgba(255,30,0,${(heatIntensity * 0.4).toFixed(2)})`,
+                    `0 0 14px 4px rgba(255,140,0,${(heatIntensity).toFixed(2)}), 0 0 40px 10px rgba(255,60,0,${(heatIntensity * 0.55).toFixed(2)})`,
+                    `0 0 6px 2px rgba(255,80,0,${(heatIntensity * 0.7).toFixed(2)}), 0 0 18px 5px rgba(255,30,0,${(heatIntensity * 0.4).toFixed(2)})`,
+                  ],
+                  background: [
+                    `rgba(255,80,0,${(heatIntensity * 0.85).toFixed(2)})`,
+                    `rgba(255,160,0,${(heatIntensity).toFixed(2)})`,
+                    `rgba(255,80,0,${(heatIntensity * 0.85).toFixed(2)})`,
+                  ],
+                }}
+                transition={{ duration: 0.38, repeat: Infinity, ease: 'easeInOut' }}
+              />
+            )}
+
+            {/* Ateş çizgisi — alt kenar */}
+            {heatIntensity > 0 && (
+              <motion.div
+                className="absolute inset-x-0 bottom-0 z-[25] pointer-events-none"
+                style={{ height: 3 }}
+                animate={{
+                  boxShadow: [
+                    `0 0 6px 2px rgba(255,80,0,${(heatIntensity * 0.7).toFixed(2)}), 0 0 18px 5px rgba(255,30,0,${(heatIntensity * 0.4).toFixed(2)})`,
+                    `0 0 14px 4px rgba(255,140,0,${(heatIntensity).toFixed(2)}), 0 0 40px 10px rgba(255,60,0,${(heatIntensity * 0.55).toFixed(2)})`,
+                    `0 0 6px 2px rgba(255,80,0,${(heatIntensity * 0.7).toFixed(2)}), 0 0 18px 5px rgba(255,30,0,${(heatIntensity * 0.4).toFixed(2)})`,
+                  ],
+                  background: [
+                    `rgba(255,80,0,${(heatIntensity * 0.85).toFixed(2)})`,
+                    `rgba(255,160,0,${(heatIntensity).toFixed(2)})`,
+                    `rgba(255,80,0,${(heatIntensity * 0.85).toFixed(2)})`,
+                  ],
+                }}
+                transition={{ duration: 0.38, repeat: Infinity, ease: 'easeInOut', delay: 0.19 }}
+              />
+            )}
+
           <div className="overflow-hidden" style={{ maskImage: 'linear-gradient(to right, transparent, black 8%, black 92%, transparent)' }}>
-            <div className="marquee-track gap-3">
+            <div className="marquee-track gap-3" style={{ animationDirection: dir, animationDuration: `${speed}s` }}>
               {[...RESPONSIBILITIES, ...RESPONSIBILITIES].map((r, i) => (
                 <div
                   key={i}
@@ -150,6 +373,7 @@ export default function SkillsPage() {
               ))}
             </div>
           </div>
+          </div>{/* /relative overflow-visible */}
         </div>
 
         {/* ── Tech Stack ── */}
