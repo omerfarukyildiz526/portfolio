@@ -5,11 +5,12 @@ import { usePathname } from 'next/navigation';
 import { motion } from 'framer-motion';
 
 const ROUTES = [
-  { path: '/',         method: 'GET',  label: '/home' },
-  { path: '/skills',   method: 'GET',  label: '/skills' },
-  { path: '/projects', method: 'GET',  label: '/projects' },
-  { path: '/feed',     method: 'GET',  label: '/feed' },
-  { path: '/contact',  method: 'POST', label: '/contact' },
+  { path: '/',            method: 'GET',  label: '/home' },
+  { path: '/skills',      method: 'GET',  label: '/skills' },
+  { path: '/projects',    method: 'GET',  label: '/projects' },
+  { path: '/experience',  method: 'GET',  label: '/experience' },
+  { path: '/feed',        method: 'GET',  label: '/feed' },
+  { path: '/contact',     method: 'POST', label: '/contact' },
 ];
 
 const METHOD_COLOR: Record<string, string> = {

@@ -573,9 +573,36 @@ export default function HeroPage() {
             >
               // API ROTALARI
             </motion.p>
-            <EndpointCard method="GET"  path="/api/skills"   desc="teknoloji stack & kütüphaneler"  href="/skills"   delay={1.05} />
-            <EndpointCard method="GET"  path="/api/projects" desc="github repo dizini"               href="/projects" delay={1.15} />
-            <EndpointCard method="POST" path="/api/contact"  desc="iletişim isteği gönder"          href="/contact"  delay={1.25} />
+            <EndpointCard method="GET"  path="/api/skills"      desc="teknoloji stack & kütüphaneler"  href="/skills"      delay={1.05} />
+            <EndpointCard method="GET"  path="/api/projects"   desc="github repo dizini"               href="/projects"   delay={1.15} />
+            <EndpointCard method="GET"  path="/api/experience" desc="kariyer & sertifikalar"           href="/experience" delay={1.2} />
+            <EndpointCard method="POST" path="/api/contact"    desc="iletişim isteği gönder"          href="/contact"    delay={1.25} />
+            <motion.div
+              initial={{ opacity: 0, x: -20 }}
+              animate={{ opacity: 1, x: 0 }}
+              transition={{ delay: 1.35, duration: 0.6, ease: [0.23, 1, 0.32, 1] }}
+            >
+              <a
+                href="/cv.pdf"
+                download="OmerFarukYildiz_CV.pdf"
+                className="group flex items-center gap-5 p-5 rounded-xl border border-[#ff8c42]/20 bg-[#ff8c42]/[0.03] hover:bg-[#ff8c42]/[0.06] hover:border-[#ff8c42]/40 transition-all duration-250 relative overflow-hidden"
+                style={{ fontFamily: 'var(--font-jetbrains, monospace)' }}
+              >
+                <div className="flex-shrink-0 w-1 h-10 rounded-full" style={{ background: '#ff8c42', boxShadow: '0 0 10px #ff8c42' }} />
+                <span className="text-[11px] font-black uppercase tracking-widest flex-shrink-0 w-12" style={{ color: '#ff8c42' }}>GET</span>
+                <span className="text-sm font-bold text-white/70 group-hover:text-white transition-colors flex-shrink-0">
+                  /cv.pdf
+                </span>
+                <span className="text-[11px] text-white/25 font-mono flex-1 truncate hidden md:block">// özgeçmiş indir</span>
+                <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none"
+                     stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"
+                     className="text-white/20 group-hover:text-white/60 transition-all duration-200 flex-shrink-0">
+                  <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
+                  <polyline points="7 10 12 15 17 10"/>
+                  <line x1="12" x2="12" y1="15" y2="3"/>
+                </svg>
+              </a>
+            </motion.div>
           </div>
 
           {/* Tags */}
