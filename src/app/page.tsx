@@ -445,7 +445,7 @@ function InteractiveTerminal() {
       <div
         ref={scrollRef}
         className="flex-1 overflow-y-auto px-5 pt-4 pb-2 space-y-[2px]"
-        style={{ fontFamily: 'var(--font-jetbrains, monospace)', maxHeight: 'min(420px, 45vh)', minHeight: '220px' }}
+        style={{ fontFamily: 'var(--font-jetbrains, monospace)', maxHeight: 'min(420px, 40vh)', minHeight: '200px' }}
       >
         {lines.map(line => (
           <div key={line.id} className="flex items-start text-[12px] leading-[1.7]">
@@ -474,7 +474,6 @@ function InteractiveTerminal() {
               fontSize: '12px',
               cursor: 'text',
             }}
-            autoFocus
             spellCheck={false}
             autoComplete="off"
             autoCorrect="off"
@@ -511,7 +510,7 @@ export default function HeroPage() {
   if (!mounted) return null;
 
   return (
-    <main className="min-h-screen cyber-grid pt-16 md:pt-24 pb-12 md:pb-16 px-5 md:px-14 lg:px-24 flex flex-col justify-center">
+    <main className="min-h-screen cyber-grid pt-20 md:pt-28 pb-12 md:pb-16 px-5 md:px-14 lg:px-24">
       <div className="max-w-[1300px] mx-auto w-full grid grid-cols-1 lg:grid-cols-2 gap-10 items-stretch">
 
         {/* ── LEFT: Name + API Endpoints ── */}
@@ -522,20 +521,20 @@ export default function HeroPage() {
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: 0.2, duration: 0.8, ease: [0.23, 1, 0.32, 1] }}
-            className="flex items-start gap-6"
+            className="flex flex-col sm:flex-row items-center sm:items-start gap-4 sm:gap-6"
           >
             <div className="flex-shrink-0">
-              <ProfileStack mainSize={120} smallSize={48} />
+              <ProfileStack mainSize={90} smallSize={36} />
             </div>
 
-            <div className="pt-1">
-              <h1 className="text-2xl font-black uppercase tracking-tight leading-tight text-white heading-primary">
+            <div className="pt-1 text-center sm:text-left">
+              <h1 className="text-xl sm:text-2xl font-black uppercase tracking-tight leading-tight text-white heading-primary">
                 Ömer Faruk <span className="accent-orange-glow">Yıldız</span>
               </h1>
-              <p className="text-[11px] font-mono text-white/30 mt-0.5 tracking-wide text-premium">
+              <p className="text-[10px] sm:text-[11px] font-mono text-white/30 mt-0.5 tracking-wide text-premium">
                 Yazılım Uzmanı · Barsan Global Lojistik
               </p>
-              <div className="flex items-center gap-2 mt-1.5"
+              <div className="flex items-center justify-center sm:justify-start gap-2 mt-1.5"
                    style={{ fontFamily: 'var(--font-jetbrains, monospace)' }}>
                 <span className="status-dot" style={{ width: 5, height: 5 }} />
                 <span className="text-[9px] text-white/25 uppercase tracking-[0.3em]">API_SERVER_ONLINE</span>
@@ -584,7 +583,7 @@ export default function HeroPage() {
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             transition={{ delay: 1.4 }}
-            className="flex flex-wrap gap-2"
+            className="flex flex-wrap gap-2 justify-center sm:justify-start"
           >
             {['Backend Dev', 'Python', 'C# / .NET', 'RPA', 'Web API', 'Barsan Global Lojistik'].map((t) => (
               <span key={t} className="accent-tag">{t}</span>
@@ -592,7 +591,7 @@ export default function HeroPage() {
           </motion.div>
         </div>
 
-        {/* ── RIGHT: Interactive Terminal ── */}
+        {/* ── RIGHT: Interactive Terminal (masaüstü) ── */}
         <motion.div
           initial={{ opacity: 0, y: 30 }}
           animate={{ opacity: 1, y: 0 }}
@@ -603,12 +602,12 @@ export default function HeroPage() {
         </motion.div>
       </div>
 
-      {/* Bottom stats bar */}
+      {/* Bottom stats bar (masaüstü) */}
       <motion.div
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ delay: 1.5, duration: 0.7 }}
-        className="max-w-[1300px] mx-auto w-full mt-10 pt-8 border-t grid grid-cols-3 md:grid-cols-6 gap-6 text-center"
+        className="max-w-[1300px] mx-auto w-full mt-8 pt-6 border-t grid grid-cols-3 md:grid-cols-6 gap-4 text-center"
         style={{ borderColor: 'rgba(68,136,255,0.07)' }}
       >
         {[

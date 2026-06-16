@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useRef } from 'react';
+import React, { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 
 const RESPONSIBILITIES = [
@@ -19,15 +19,7 @@ function TechCard({
   libs: { name: string; sub: string[] }[];
   delay: number;
 }) {
-  const ref = useRef<HTMLDivElement>(null);
-  const [rot, setRot] = useState({ x: 0, y: 0 });
   const [open, setOpen] = useState(false);
-
-  const onMove = (e: React.MouseEvent) => {
-    if (!ref.current) return;
-    const r = ref.current.getBoundingClientRect();
-    setRot({ x: ((e.clientY - r.top) / r.height - 0.5) * -10, y: ((e.clientX - r.left) / r.width - 0.5) * 10 });
-  };
 
   return (
     <motion.div
@@ -36,14 +28,9 @@ function TechCard({
       viewport={{ once: true }}
       transition={{ duration: 0.5, delay, ease: [0.23, 1, 0.32, 1] }}
     >
-      <motion.div
-        ref={ref}
-        onMouseMove={onMove}
-        onMouseLeave={() => setRot({ x: 0, y: 0 })}
+      <div
         onClick={() => setOpen(!open)}
-        animate={{ rotateX: rot.x, rotateY: rot.y }}
-        transition={{ type: 'spring', stiffness: 300, damping: 24 }}
-        style={{ transformPerspective: 900, transformStyle: 'preserve-3d', minHeight: '200px' }}
+        style={{ minHeight: '200px' }}
         className="card rounded-xl p-5 md:p-6 cursor-pointer group relative flex flex-col"
       >
         <div className="absolute top-0 left-0 w-full h-[2px] bg-[#4488ff] opacity-40 group-hover:opacity-80 transition-opacity"
@@ -89,7 +76,7 @@ function TechCard({
             </motion.div>
           )}
         </AnimatePresence>
-      </motion.div>
+      </div>
     </motion.div>
   );
 }

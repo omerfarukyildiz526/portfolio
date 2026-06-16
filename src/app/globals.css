@@ -32,10 +32,8 @@ html { scroll-behavior: smooth; }
 ::-webkit-scrollbar-track { background: #050505; }
 ::-webkit-scrollbar-thumb { background: var(--accent); }
 
-* { cursor: none !important; }
-
 body {
-  background: linear-gradient(135deg, var(--bg) 0%, var(--bg-light) 100%);
+  background: var(--bg);
   color: var(--fg);
   font-family: var(--font-display, 'Poppins'), sans-serif;
   overflow-x: hidden;
@@ -208,13 +206,7 @@ body {
 }
 
 /* === CYBER GRID === */
-.cyber-grid {
-  background-image:
-    linear-gradient(rgba(68,136,255,0.015) 1px, transparent 1px),
-    linear-gradient(90deg, rgba(68,136,255,0.015) 1px, transparent 1px);
-  background-size: 80px 80px;
-  background-color: linear-gradient(135deg, var(--bg) 0%, var(--bg-light) 100%);
-}
+.cyber-grid {}
 
 /* === SCROLLBAR HIDE === */
 .scrollbar-hide { scrollbar-width: none; -ms-overflow-style: none; }
