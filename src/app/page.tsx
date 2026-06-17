@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState, useEffect, useRef, useCallback } from 'react';
-import { motion } from 'framer-motion';
+import { motion, AnimatePresence } from 'framer-motion';
 import Link from 'next/link';
 import ProfileStack from '@/components/ProfileStack';
 
@@ -20,7 +20,7 @@ function EndpointCard({ method, path, desc, href, delay = 0 }: {
         <motion.div
           whileHover={{ scale: 1.015, borderColor: mc + '45', y: -4 }}
           whileTap={{ scale: 0.985 }}
-          className="group flex items-center gap-5 p-5 rounded-xl border border-white/6 bg-white/[0.015] transition-all duration-250 relative overflow-hidden"
+          className="group flex items-center gap-5 p-5 rounded-xl border transition-all duration-250 relative overflow-hidden card"
           style={{ fontFamily: 'var(--font-jetbrains, monospace)' }}
         >
           <div className="absolute inset-0 opacity-0 group-hover:opacity-5 transition-opacity duration-300"
@@ -29,15 +29,16 @@ function EndpointCard({ method, path, desc, href, delay = 0 }: {
           <span className="text-[11px] font-black uppercase tracking-widest flex-shrink-0 w-12 heading-accent" style={{ color: mc }}>
             {method}
           </span>
-          <span className="text-sm font-bold text-white/70 group-hover:text-white transition-colors flex-shrink-0 text-premium">
+          <span className="text-sm font-bold flex-shrink-0 text-premium transition-colors" style={{ color: 'var(--fg)' }}>
             {path}
           </span>
-          <span className="text-[11px] text-white/25 font-mono flex-1 truncate hidden md:block">
+          <span className="text-[11px] font-mono flex-1 truncate hidden md:block" style={{ color: 'var(--dim)' }}>
             // {desc}
           </span>
           <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none"
                stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"
-               className="text-white/20 group-hover:text-white/60 group-hover:translate-x-1 transition-all duration-200 flex-shrink-0">
+               className="group-hover:translate-x-1 transition-all duration-200 flex-shrink-0"
+               style={{ color: 'var(--dim-soft)' }}>
             <path d="M5 12h14"/><path d="m12 5 7 7-7 7"/>
           </svg>
         </motion.div>
@@ -452,7 +453,7 @@ function InteractiveTerminal() {
             {line.isInput && (
               <span style={{ color: '#4488ff', marginRight: '8px', flexShrink: 0 }}>$</span>
             )}
-            <span style={{ color: line.color ?? 'rgba(244,244,244,0.4)', whiteSpace: 'pre-wrap', wordBreak: 'break-all' }}>
+            <span style={{ color: line.color ?? 'var(--dim)', whiteSpace: 'pre-wrap', wordBreak: 'break-all' }}>
               {line.text}
             </span>
           </div>
@@ -468,7 +469,7 @@ function InteractiveTerminal() {
             onKeyDown={handleKeyDown}
             className="flex-1 bg-transparent outline-none border-none"
             style={{
-              color: 'rgba(244,244,244,0.75)',
+              color: 'var(--fg)',
               caretColor: '#4488ff',
               fontFamily: 'var(--font-jetbrains, monospace)',
               fontSize: '12px',
@@ -487,10 +488,102 @@ function InteractiveTerminal() {
       </div>
 
       {/* Footer hint */}
-      <div className="px-5 py-2 border-t" style={{ borderColor: 'rgba(68,136,255,0.08)' }}>
-        <span className="text-[9px] font-mono text-white/15 tracking-widest">
+      <div className="px-5 py-2 border-t" style={{ borderColor: 'var(--border)' }}>
+        <span className="text-[9px] font-mono tracking-widest" style={{ color: 'var(--dim-soft)' }}>
           TAB: tamamla &nbsp;·&nbsp; ↑↓: geçmiş &nbsp;·&nbsp; help: komutlar
         </span>
+      </div>
+    </div>
+  );
+}
+
+// ─── QUOTES ───────────────────────────────────────────────────────────────────
+const QUOTES = [
+  { text: 'Başarısız olsak bile çabalarımız boşa değildir.', author: 'Nikola Tesla' },
+  { text: 'Hayal gücü bilgiden daha önemlidir.', author: 'Albert Einstein' },
+  { text: 'Kod yazmak şiir yazmak gibidir; kısa, güzel ve anlamlı olmalıdır.', author: 'Anonim' },
+  { text: 'Önce çöz, sonra optimize et.', author: 'Kent Beck' },
+  { text: 'Her uzman, bir zamanlar acemiydi.', author: 'Helen Hayes' },
+];
+
+function QuoteCarousel() {
+  const [idx, setIdx]       = useState(0);
+  const [dir, setDir]       = useState(1);
+  const timerRef            = useRef<ReturnType<typeof setInterval> | null>(null);
+
+  const go = (next: number, d: number) => {
+    setDir(d);
+    setIdx((next + QUOTES.length) % QUOTES.length);
+  };
+
+  const reset = () => {
+    if (timerRef.current) clearInterval(timerRef.current);
+    timerRef.current = setInterval(() => go(idx + 1, 1), 3000);
+  };
+
+  useEffect(() => {
+    timerRef.current = setInterval(() => setIdx((p) => (p + 1) % QUOTES.length), 3000);
+    return () => { if (timerRef.current) clearInterval(timerRef.current); };
+  }, []);
+
+  const prev = () => { setDir(-1); setIdx((p) => (p - 1 + QUOTES.length) % QUOTES.length); reset(); };
+  const next = () => { setDir(1);  setIdx((p) => (p + 1) % QUOTES.length); reset(); };
+
+  return (
+    <div className="w-full max-w-[1300px] mx-auto mt-10 mb-2 px-2">
+      <p className="text-[9px] font-mono uppercase tracking-[0.4em] text-white/20 mb-4 text-center">// İLHAM</p>
+      <div className="relative flex items-center gap-3">
+        <button
+          onClick={prev}
+          className="flex-shrink-0 w-7 h-7 rounded-full flex items-center justify-center transition-all duration-150 hover:scale-110"
+          style={{ background: 'var(--surface)', border: '1px solid var(--border)', color: 'var(--dim)' }}
+        >
+          <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><path d="M19 12H5m7-7-7 7 7 7"/></svg>
+        </button>
+
+        <div className="flex-1 overflow-hidden">
+          <AnimatePresence mode="wait" initial={false}>
+            <motion.div
+              key={idx}
+              initial={{ x: dir > 0 ? 60 : -60, opacity: 0 }}
+              animate={{ x: 0, opacity: 1 }}
+              exit={{ x: dir > 0 ? -60 : 60, opacity: 0 }}
+              transition={{ duration: 0.4, ease: [0.23, 1, 0.32, 1] }}
+              className="text-center px-4"
+            >
+              <p className="text-sm md:text-base text-white/55 leading-relaxed italic mb-2">
+                &ldquo;{QUOTES[idx].text}&rdquo;
+              </p>
+              <p className="text-[10px] font-mono tracking-widest" style={{ color: 'var(--dim)' }}>
+                — {QUOTES[idx].author}
+              </p>
+            </motion.div>
+          </AnimatePresence>
+        </div>
+
+        <button
+          onClick={next}
+          className="flex-shrink-0 w-7 h-7 rounded-full flex items-center justify-center transition-all duration-150 hover:scale-110"
+          style={{ background: 'var(--surface)', border: '1px solid var(--border)', color: 'var(--dim)' }}
+        >
+          <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><path d="M5 12h14m-7-7 7 7-7 7"/></svg>
+        </button>
+      </div>
+
+      {/* Nokta göstergesi */}
+      <div className="flex justify-center gap-1.5 mt-4">
+        {QUOTES.map((_, i) => (
+          <button
+            key={i}
+            onClick={() => { setDir(i > idx ? 1 : -1); setIdx(i); reset(); }}
+            className="rounded-full transition-all duration-300"
+            style={{
+              width:  i === idx ? '16px' : '5px',
+              height: '5px',
+              background: i === idx ? 'var(--fg)' : 'var(--dim-soft)',
+            }}
+          />
+        ))}
       </div>
     </div>
   );
@@ -573,35 +666,28 @@ export default function HeroPage() {
             >
               // API ROTALARI
             </motion.p>
-            <EndpointCard method="GET"  path="/api/skills"      desc="teknoloji stack & kütüphaneler"  href="/skills"      delay={1.05} />
-            <EndpointCard method="GET"  path="/api/projects"   desc="github repo dizini"               href="/projects"   delay={1.15} />
-            <EndpointCard method="GET"  path="/api/experience" desc="kariyer & sertifikalar"           href="/experience" delay={1.2} />
+            <EndpointCard method="GET"  path="/api/experience" desc="kariyer & sertifikalar"           href="/experience" delay={1.05} />
+            <EndpointCard method="GET"  path="/api/skills"      desc="teknoloji stack & kütüphaneler"  href="/skills"      delay={1.15} />
+            <EndpointCard method="GET"  path="/api/projects"   desc="github repo dizini"               href="/projects"   delay={1.2} />
             <EndpointCard method="POST" path="/api/contact"    desc="iletişim isteği gönder"          href="/contact"    delay={1.25} />
             <motion.div
               initial={{ opacity: 0, x: -20 }}
               animate={{ opacity: 1, x: 0 }}
               transition={{ delay: 1.35, duration: 0.6, ease: [0.23, 1, 0.32, 1] }}
             >
-              <a
-                href="/cv.pdf"
-                download="OmerFarukYildiz_CV.pdf"
-                className="group flex items-center gap-5 p-5 rounded-xl border border-[#ff8c42]/20 bg-[#ff8c42]/[0.03] hover:bg-[#ff8c42]/[0.06] hover:border-[#ff8c42]/40 transition-all duration-250 relative overflow-hidden"
+              <div
+                className="flex items-center gap-5 p-5 rounded-xl border border-white/5 bg-white/[0.02] relative overflow-hidden cursor-default"
                 style={{ fontFamily: 'var(--font-jetbrains, monospace)' }}
               >
-                <div className="flex-shrink-0 w-1 h-10 rounded-full" style={{ background: '#ff8c42', boxShadow: '0 0 10px #ff8c42' }} />
-                <span className="text-[11px] font-black uppercase tracking-widest flex-shrink-0 w-12" style={{ color: '#ff8c42' }}>GET</span>
-                <span className="text-sm font-bold text-white/70 group-hover:text-white transition-colors flex-shrink-0">
-                  /cv.pdf
+                <div className="flex-shrink-0 w-1 h-10 rounded-full" style={{ background: 'var(--dim-soft)' }} />
+                <span className="text-[11px] font-black uppercase tracking-widest flex-shrink-0 w-12" style={{ color: 'var(--dim-soft)' }}>GET</span>
+                <span className="text-sm font-bold flex-shrink-0 line-through" style={{ color: 'var(--dim)' }}>/cv.pdf</span>
+                <span className="text-[11px] font-mono flex-1 truncate hidden md:block" style={{ color: 'var(--dim-soft)' }}>// henüz hazır değil</span>
+                <span className="text-[9px] font-mono uppercase tracking-widest px-2 py-1 rounded-full animate-pulse"
+                      style={{ background: 'rgba(255,140,66,0.08)', color: '#ff8c42', border: '1px solid rgba(255,140,66,0.2)' }}>
+                  yakında
                 </span>
-                <span className="text-[11px] text-white/25 font-mono flex-1 truncate hidden md:block">// özgeçmiş indir</span>
-                <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none"
-                     stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"
-                     className="text-white/20 group-hover:text-white/60 transition-all duration-200 flex-shrink-0">
-                  <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
-                  <polyline points="7 10 12 15 17 10"/>
-                  <line x1="12" x2="12" y1="15" y2="3"/>
-                </svg>
-              </a>
+              </div>
             </motion.div>
           </div>
 
@@ -646,12 +732,14 @@ export default function HeroPage() {
           { label: 'Response',    value: '<1ms', sub: 'latency' },
         ].map((s) => (
           <div key={s.label} className="space-y-1">
-            <div className="text-[9px] font-mono text-white/20 uppercase tracking-[0.2em]">{s.label}</div>
+            <div className="text-[9px] font-mono uppercase tracking-[0.2em]" style={{ color: 'var(--dim-soft)' }}>{s.label}</div>
             <div className="text-2xl font-black accent">{s.value}</div>
-            <div className="text-[9px] font-mono text-white/15">{s.sub}</div>
+            <div className="text-[9px] font-mono" style={{ color: 'var(--dim-soft)' }}>{s.sub}</div>
           </div>
         ))}
       </motion.div>
+
+      <QuoteCarousel />
     </main>
   );
 }

@@ -1,17 +1,120 @@
 @import "tailwindcss";
 
-:root {
+:root,
+[data-theme="dark"] {
   --bg:        #0a0f2e;
   --bg-light:  #1a2454;
   --bg-card:   #0f1635;
-  --fg:        #f4f4f4;
+  --fg:        #e8e8ea;
   --accent:    #4488ff;
   --accent-orange: #ff8c42;
   --dim:       rgba(244,244,244,0.35);
-  --border:    rgba(244,244,244,0.07);
-  --surface:   rgba(255,255,255,0.025);
-  --glow:      0 0 8px #4488ff, 0 0 20px rgba(68,136,255,0.35);
+  --dim-soft:  rgba(244,244,244,0.18);
+  --border:    rgba(244,244,244,0.06);
+  --surface:   rgba(255,255,255,0.02);
+  --glow:      0 0 8px #4488ff, 0 0 20px rgba(68,136,255,0.3);
   --glow-orange: 0 0 12px #ff8c42, 0 0 24px rgba(255,140,66,0.25);
+  --logo-filter: brightness(0) invert(1);
+  color-scheme: dark;
+}
+
+/* ── Accent renk seçenekleri ── */
+[data-accent="blue"]   { --accent: #4488ff; --glow: 0 0 8px #4488ff, 0 0 20px rgba(68,136,255,0.3); }
+[data-accent="green"]  { --accent: #22c55e; --glow: 0 0 8px #22c55e, 0 0 20px rgba(34,197,94,0.3); }
+[data-accent="purple"] { --accent: #a855f7; --glow: 0 0 8px #a855f7, 0 0 20px rgba(168,85,247,0.3); }
+[data-accent="pink"]   { --accent: #ec4899; --glow: 0 0 8px #ec4899, 0 0 20px rgba(236,72,153,0.3); }
+[data-accent="cyan"]   { --accent: #06b6d4; --glow: 0 0 8px #06b6d4, 0 0 20px rgba(6,182,212,0.3); }
+[data-accent="orange"] { --accent: #ff8c42; --glow: 0 0 8px #ff8c42, 0 0 20px rgba(255,140,66,0.3); }
+
+/* ─────────────────────────────────────────────────────────────────────────────
+   AÇIK TEMA  —  Light Minimal Blue Accent
+   #FFFFFF → arka plan · #F5F7FB → kartlar · #E2E8F0 → border · #0F172A → yazı · #3B82F6 → vurgu
+───────────────────────────────────────────────────────────────────────────── */
+[data-theme="light"] {
+  --bg:            #EEF2F7;
+  --bg-light:      #E2E8F0;
+  --bg-card:       #FFFFFF;
+  --fg:            #0F172A;
+  --accent:        #3B82F6;
+  --accent-orange: #ea6c1a;
+  --dim:           rgba(15,23,42,0.65);
+  --dim-soft:      rgba(15,23,42,0.38);
+  --border:        #CBD5E1;
+  --surface:       rgba(15,23,42,0.04);
+  --glow:          0 0 10px #3B82F6, 0 0 24px rgba(59,130,246,0.25);
+  --glow-orange:   0 0 12px #ea6c1a, 0 0 24px rgba(234,108,26,0.25);
+  --logo-filter:   brightness(0.1) saturate(0);
+  color-scheme: light;
+}
+
+/* ── text-white/* → #0F172A bazlı koyu ── */
+[data-theme="light"] .text-white      { color: #0F172A !important; }
+[data-theme="light"] .text-white\/90  { color: rgba(15,23,42,0.95) !important; }
+[data-theme="light"] .text-white\/80  { color: rgba(15,23,42,0.90) !important; }
+[data-theme="light"] .text-white\/70  { color: rgba(15,23,42,0.80) !important; }
+[data-theme="light"] .text-white\/60  { color: rgba(15,23,42,0.70) !important; }
+[data-theme="light"] .text-white\/55  { color: rgba(15,23,42,0.66) !important; }
+[data-theme="light"] .text-white\/50  { color: rgba(15,23,42,0.62) !important; }
+[data-theme="light"] .text-white\/40  { color: rgba(15,23,42,0.56) !important; }
+[data-theme="light"] .text-white\/35  { color: rgba(15,23,42,0.52) !important; }
+[data-theme="light"] .text-white\/30  { color: rgba(15,23,42,0.52) !important; }
+[data-theme="light"] .text-white\/25  { color: rgba(15,23,42,0.48) !important; }
+[data-theme="light"] .text-white\/20  { color: rgba(15,23,42,0.42) !important; }
+[data-theme="light"] .text-white\/15  { color: rgba(15,23,42,0.36) !important; }
+[data-theme="light"] .text-white\/12  { color: rgba(15,23,42,0.30) !important; }
+[data-theme="light"] .text-white\/10  { color: rgba(15,23,42,0.26) !important; }
+[data-theme="light"] .text-white\/5   { color: rgba(15,23,42,0.16) !important; }
+
+/* ── bg-white/* → surface'e dönüştür ── */
+[data-theme="light"] .bg-white\/\[0\.04\]  { background: rgba(15,23,42,0.04) !important; }
+[data-theme="light"] .bg-white\/\[0\.03\]  { background: rgba(15,23,42,0.03) !important; }
+[data-theme="light"] .bg-white\/\[0\.02\]  { background: rgba(15,23,42,0.025) !important; }
+[data-theme="light"] .bg-white\/\[0\.015\] { background: rgba(15,23,42,0.02) !important; }
+[data-theme="light"] .bg-white\/\[0\.01\]  { background: rgba(15,23,42,0.015) !important; }
+[data-theme="light"] .bg-white\/5   { background: rgba(15,23,42,0.05) !important; }
+[data-theme="light"] .bg-white\/10  { background: rgba(15,23,42,0.08) !important; }
+
+/* ── border-white/* → #CBD5E1 bazlı ── */
+[data-theme="light"] .border-white\/5   { border-color: #CBD5E1 !important; }
+[data-theme="light"] .border-white\/6   { border-color: #CBD5E1 !important; }
+[data-theme="light"] .border-white\/8   { border-color: #CBD5E1 !important; }
+[data-theme="light"] .border-white\/10  { border-color: #B0BEC5 !important; }
+[data-theme="light"] .border-white\/12  { border-color: #B0BEC5 !important; }
+[data-theme="light"] .border-white\/14  { border-color: #94A3B8 !important; }
+[data-theme="light"] .border-white\/15  { border-color: #94A3B8 !important; }
+[data-theme="light"] .hover\:border-white\/12:hover { border-color: #64748B !important; }
+[data-theme="light"] .hover\:border-white\/14:hover { border-color: #64748B !important; }
+
+/* ── Kartlar: beyaz zemin, belirgin border + shadow ── */
+[data-theme="light"] .card {
+  background: #FFFFFF !important;
+  border-color: #CBD5E1 !important;
+  box-shadow: 0 1px 3px rgba(15,23,42,0.08), 0 4px 20px rgba(15,23,42,0.06);
+}
+[data-theme="light"] .card:hover {
+  border-color: #3B82F6 !important;
+  box-shadow: 0 4px 12px rgba(59,130,246,0.15), 0 8px 28px rgba(15,23,42,0.10) !important;
+}
+
+/* ── Terminal: beyaz + net border + shadow ── */
+[data-theme="light"] .terminal {
+  background: #FFFFFF !important;
+  border-color: #CBD5E1 !important;
+  box-shadow: 0 1px 3px rgba(15,23,42,0.08), 0 4px 16px rgba(15,23,42,0.06);
+}
+[data-theme="light"] .terminal-header {
+  background: #F5F7FB !important;
+  border-color: #CBD5E1 !important;
+}
+
+/* ── Light mod: accent-tag daha belirgin ── */
+[data-theme="light"] .accent-tag {
+  background: rgba(59,130,246,0.10) !important;
+  border-color: rgba(59,130,246,0.30) !important;
+}
+[data-theme="light"] .orange-tag {
+  background: rgba(234,108,26,0.10) !important;
+  border-color: rgba(234,108,26,0.30) !important;
 }
 
 @theme inline {
@@ -29,12 +132,13 @@
 html { scroll-behavior: smooth; }
 
 ::-webkit-scrollbar       { width: 3px; }
-::-webkit-scrollbar-track { background: #050505; }
+::-webkit-scrollbar-track { background: var(--bg); }
 ::-webkit-scrollbar-thumb { background: var(--accent); }
 
 body {
   background: var(--bg);
   color: var(--fg);
+  transition: background 0.3s ease, color 0.3s ease;
   font-family: var(--font-display, 'Poppins'), sans-serif;
   overflow-x: hidden;
   min-height: 100vh;
@@ -82,8 +186,8 @@ body {
   background: repeating-linear-gradient(
     to bottom,
     transparent, transparent 2px,
-    rgba(68,136,255,0.004) 2px,
-    rgba(68,136,255,0.004) 4px
+    rgba(85,119,221,0.003) 2px,
+    rgba(85,119,221,0.003) 4px
   );
   pointer-events: none;
   z-index: 9998;
@@ -178,31 +282,31 @@ body {
 
 /* === CARDS === */
 .card {
-  background: linear-gradient(135deg, var(--bg-card) 0%, rgba(15,22,53,0.5) 100%);
+  background: var(--bg-card);
   border: 1px solid var(--border);
   transition: border-color 0.3s, box-shadow 0.3s, transform 0.3s;
 }
 .card:hover {
-  border-color: rgba(255,140,66,0.35);
-  box-shadow: 0 0 20px rgba(255,140,66,0.15);
+  border-color: color-mix(in srgb, var(--accent-orange) 35%, transparent);
+  box-shadow: 0 0 20px color-mix(in srgb, var(--accent-orange) 15%, transparent);
   transform: translateY(-2px);
 }
 
 /* === TERMINAL === */
 .terminal {
   font-family: var(--font-jetbrains, 'JetBrains Mono'), monospace;
-  background: linear-gradient(135deg, rgba(10,15,46,0.8) 0%, rgba(26,36,84,0.6) 100%);
-  border: 1px solid rgba(255,140,66,0.2);
-  box-shadow: 0 0 20px rgba(255,140,66,0.05);
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  box-shadow: 0 0 20px rgba(0,0,0,0.05);
   transition: box-shadow 0.3s, border-color 0.3s;
 }
 .terminal:hover {
-  border-color: rgba(255,140,66,0.35);
-  box-shadow: 0 0 25px rgba(255,140,66,0.1);
+  border-color: color-mix(in srgb, var(--accent-orange) 35%, transparent);
+  box-shadow: 0 0 25px color-mix(in srgb, var(--accent-orange) 10%, transparent);
 }
 .terminal-header {
-  border-bottom: 1px solid rgba(255,140,66,0.15);
-  background: linear-gradient(90deg, rgba(255,140,66,0.05), rgba(255,140,66,0.02), rgba(255,140,66,0.05));
+  border-bottom: 1px solid var(--border);
+  background: var(--surface);
 }
 
 /* === CYBER GRID === */
@@ -231,8 +335,8 @@ body {
 
 /* Glowing intensity pulse */
 @keyframes glow-pulse {
-  0%, 100% { box-shadow: 0 0 8px rgba(68,136,255,0.3); }
-  50%      { box-shadow: 0 0 16px rgba(68,136,255,0.5); }
+  0%, 100% { box-shadow: 0 0 8px rgba(85,119,221,0.3); }
+  50%      { box-shadow: 0 0 16px rgba(85,119,221,0.5); }
 }
 
 /* Wave-like floating motion */
@@ -251,9 +355,9 @@ body {
 
 /* Animated gradient border */
 @keyframes border-glow {
-  0%   { border-color: rgba(68,136,255,0.2); box-shadow: 0 0 10px rgba(68,136,255,0.2); }
-  50%  { border-color: rgba(68,136,255,0.8); box-shadow: 0 0 20px rgba(68,136,255,0.5); }
-  100% { border-color: rgba(68,136,255,0.2); box-shadow: 0 0 10px rgba(68,136,255,0.2); }
+  0%   { border-color: rgba(85,119,221,0.2); box-shadow: 0 0 10px rgba(85,119,221,0.2); }
+  50%  { border-color: rgba(85,119,221,0.8); box-shadow: 0 0 20px rgba(85,119,221,0.5); }
+  100% { border-color: rgba(85,119,221,0.2); box-shadow: 0 0 10px rgba(85,119,221,0.2); }
 }
 
 /* Shimmer light sweep */
@@ -290,8 +394,8 @@ body {
 
 /* === ACCENT TAG === */
 .accent-tag {
-  background: rgba(68,136,255,0.06);
-  border: 1px solid rgba(68,136,255,0.18);
+  background: color-mix(in srgb, var(--accent) 8%, transparent);
+  border: 1px solid color-mix(in srgb, var(--accent) 20%, transparent);
   color: var(--accent);
   font-size: 10px;
   font-weight: 650;
@@ -304,9 +408,9 @@ body {
   border-radius: 999px;
 }
 .accent-tag:hover {
-  background: rgba(68,136,255,0.12);
-  border-color: rgba(68,136,255,0.45);
-  box-shadow: 0 0 12px rgba(68,136,255,0.16);
+  background: color-mix(in srgb, var(--accent) 14%, transparent);
+  border-color: color-mix(in srgb, var(--accent) 50%, transparent);
+  box-shadow: 0 0 12px color-mix(in srgb, var(--accent) 18%, transparent);
   transform: translateY(-1px);
 }
 

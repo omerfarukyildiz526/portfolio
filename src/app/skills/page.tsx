@@ -47,29 +47,28 @@ function TechCard({
     >
       <div
         onClick={() => setOpen(!open)}
-        style={{ minHeight: '200px' }}
-        className="card rounded-xl p-5 md:p-6 cursor-pointer group relative flex flex-col"
+        className="card rounded-xl p-3 md:p-6 cursor-pointer group relative flex flex-col"
       >
         <div className="absolute top-0 left-0 w-full h-[2px] bg-[#4488ff] opacity-40 group-hover:opacity-80 transition-opacity"
              style={{ boxShadow: '0 0 10px #4488ff' }} />
 
-        <div className="flex items-start justify-between mb-3">
+        <div className="flex items-center justify-between mb-2 md:mb-3">
           <div>
-            <h3 className="text-xl md:text-2xl font-black uppercase italic tracking-tighter text-white">{title}</h3>
-            <p className="text-[9px] font-mono text-white/20 uppercase tracking-[0.2em] mt-1">{libs.length} kütüphane</p>
+            <h3 className="text-sm md:text-2xl font-black uppercase italic tracking-tighter text-white">{title}</h3>
+            <p className="text-[8px] font-mono text-white/20 uppercase tracking-[0.2em] mt-0.5 hidden md:block">{libs.length} kütüphane</p>
           </div>
-          <span className="text-[11px] font-mono text-white/20 group-hover:text-[#4488ff]/50 transition-colors mt-1">
-            {open ? '[ − ]' : '[ + ]'}
+          <span className="text-[10px] font-mono text-white/20 group-hover:text-[#4488ff]/50 transition-colors">
+            {open ? '−' : '+'}
           </span>
         </div>
 
         {/* Kapalı haldeyken kütüphane adları */}
         {!open && (
-          <div className="flex flex-col gap-3 flex-1 mt-1">
+          <div className="flex flex-col gap-1.5 md:gap-3 flex-1">
             {libs.map((lib) => (
-              <div key={lib.name} className="flex items-center gap-2.5">
-                <span className="w-1.5 h-1.5 rounded-full bg-[#4488ff]/40 flex-shrink-0" />
-                <span className="text-sm font-mono text-white/35">{lib.name}</span>
+              <div key={lib.name} className="flex items-center gap-2">
+                <span className="w-1 h-1 md:w-1.5 md:h-1.5 rounded-full bg-[#4488ff]/40 flex-shrink-0" />
+                <span className="text-[11px] md:text-sm font-mono text-white/35">{lib.name}</span>
               </div>
             ))}
           </div>
@@ -98,6 +97,176 @@ function TechCard({
   );
 }
 
+type TerminalLine = { type: 'cmd' | 'out' | 'err'; text: string };
+
+const COMMANDS: Record<string, () => string[]> = {
+  help: () => [
+    '┌─ Kullanılabilir komutlar ───────────────────┐',
+    '│  help         → bu menüyü göster            │',
+    '│  whoami       → geliştirici bilgisi          │',
+    '│  skills       → teknik beceriler             │',
+    '│  experience   → iş deneyimi                  │',
+    '│  education    → eğitim bilgisi               │',
+    '│  contact      → iletişim bilgileri           │',
+    '│  neofetch     → sistem özeti                 │',
+    '│  ls           → dizin içeriği               │',
+    '│  clear        → terminali temizle            │',
+    '└──────────────────────────────────────────────┘',
+  ],
+  whoami: () => [
+    'Ömer Faruk Yıldız',
+    'Backend Developer · RPA Specialist',
+    'İstanbul, Türkiye 🇹🇷',
+    'Barsan Global Lojistik — Yazılım Uzmanı',
+  ],
+  skills: () => [
+    '● Backend   → Python, C#, .NET Core, REST API',
+    '● Database  → SQL Server, PostgreSQL, EF Core',
+    '● RPA       → Blue Prism, Selenium, Playwright',
+    '● Entegras. → SAP RFC/BAPI, SOAP',
+    '● DevOps    → Docker, Git, CI/CD',
+    '● Frontend  → HTML, CSS, JavaScript, Next.js',
+  ],
+  experience: () => [
+    '[2025 — …  ] Yazılım Uzmanı     · Barsan Global Lojistik',
+    '[2024 — 25 ] Yazılım Stajyeri  · Barsan Global Lojistik',
+  ],
+  education: () => [
+    '[2023 — 25 ] Önlisans · Bilgisayar Programcılığı',
+    '             İstinye Üniversitesi, İstanbul',
+  ],
+  contact: () => [
+    'Email    → oy1264204@gmail.com',
+    'LinkedIn → linkedin.com/in/omer-faruk-yildiz',
+    'GitHub   → github.com/omerfarukyildiz',
+  ],
+  neofetch: () => [
+    '       .--.        omer@portfolio',
+    "      |o_o |       ──────────────",
+    '      |:_/ |       OS: Portfolio v2.0',
+    '     //   \\ \\      Shell: TypeScript',
+    '    (|     | )     Stack: Python · C# · .NET',
+    "   /'\\_   _/`\\     RPA: Blue Prism · Selenium",
+    '   \\___)=(___/     Uptime: 2+ yıl deneyim',
+  ],
+  ls: () => [
+    'drwxr-xr-x  projects/',
+    'drwxr-xr-x  experience/',
+    '-rw-r--r--  skills.json',
+    '-rw-r--r--  resume.pdf',
+    '-rw-r--r--  contact.md',
+  ],
+  naber: () => ['kod yazıyorum. sen?'],
+  'ne yapıyorsun': () => ['kod yazıyorum. sen?'],
+  'nasılsın': () => ['kod yazıyorum. sen?'],
+};
+
+function InteractiveTerminal() {
+  const [lines, setLines]   = useState<TerminalLine[]>([
+    { type: 'out', text: 'Hoş geldin! Komut listesi için "help" yaz.' },
+  ]);
+  const [input, setInput]   = useState('');
+  const [history, setHistory] = useState<string[]>([]);
+  const [histIdx, setHistIdx] = useState(-1);
+  const bottomRef = useRef<HTMLDivElement>(null);
+  const inputRef  = useRef<HTMLInputElement>(null);
+
+  useEffect(() => {
+    bottomRef.current?.scrollIntoView({ behavior: 'smooth' });
+  }, [lines]);
+
+  function run(raw: string) {
+    const cmd = raw.trim().toLowerCase();
+    const newLines: TerminalLine[] = [{ type: 'cmd', text: raw }];
+
+    if (!cmd) {
+      setLines((p) => [...p, ...newLines]);
+      return;
+    }
+
+    if (cmd === 'clear') {
+      setLines([]);
+      return;
+    }
+
+    const handler = COMMANDS[cmd];
+    if (handler) {
+      handler().forEach((t) => newLines.push({ type: 'out', text: t }));
+    } else {
+      newLines.push({ type: 'err', text: `komut bulunamadı: ${cmd}  (dene: help)` });
+    }
+
+    setLines((p) => [...p, ...newLines]);
+    setHistory((p) => [raw, ...p]);
+    setHistIdx(-1);
+  }
+
+  function onKey(e: React.KeyboardEvent<HTMLInputElement>) {
+    if (e.key === 'Enter') {
+      run(input);
+      setInput('');
+    } else if (e.key === 'ArrowUp') {
+      e.preventDefault();
+      const idx = Math.min(histIdx + 1, history.length - 1);
+      setHistIdx(idx);
+      setInput(history[idx] ?? '');
+    } else if (e.key === 'ArrowDown') {
+      e.preventDefault();
+      const idx = Math.max(histIdx - 1, -1);
+      setHistIdx(idx);
+      setInput(idx === -1 ? '' : history[idx]);
+    }
+  }
+
+  return (
+    <div
+      className="terminal rounded-xl overflow-hidden"
+      style={{ fontFamily: 'var(--font-jetbrains, monospace)' }}
+      onClick={() => inputRef.current?.focus()}
+    >
+      {/* Başlık barı */}
+      <div className="flex items-center gap-2 px-4 py-2.5 border-b border-white/5">
+        <span className="w-2.5 h-2.5 rounded-full bg-[#ff5f57]" />
+        <span className="w-2.5 h-2.5 rounded-full bg-[#febc2e]" />
+        <span className="w-2.5 h-2.5 rounded-full bg-[#28c840]" />
+        <span className="ml-2 text-[10px] text-white/25 tracking-widest">omer@portfolio:~$</span>
+      </div>
+
+      {/* Çıktı alanı */}
+      <div className="p-4 space-y-0.5 overflow-y-auto" style={{ maxHeight: '260px', minHeight: '160px' }}>
+        {lines.map((l, i) => (
+          <div key={i} className="text-[11px] leading-relaxed whitespace-pre-wrap">
+            {l.type === 'cmd' && (
+              <span>
+                <span style={{ color: '#4488ff' }}>❯&nbsp;</span>
+                <span className="text-white/70">{l.text}</span>
+              </span>
+            )}
+            {l.type === 'out' && <span style={{ color: 'var(--dim)' }}>{l.text}</span>}
+            {l.type === 'err' && <span style={{ color: '#ff6b6b' }}>{l.text}</span>}
+          </div>
+        ))}
+        <div ref={bottomRef} />
+      </div>
+
+      {/* Input satırı */}
+      <div className="flex items-center gap-2 px-4 py-2.5 border-t border-white/5">
+        <span className="text-[11px]" style={{ color: '#4488ff' }}>❯</span>
+        <input
+          ref={inputRef}
+          value={input}
+          onChange={(e) => setInput(e.target.value)}
+          onKeyDown={onKey}
+          className="flex-1 bg-transparent outline-none text-[11px] text-white/70 placeholder-white/20 caret-[#4488ff]"
+          placeholder="komut gir..."
+          autoComplete="off"
+          spellCheck={false}
+        />
+      </div>
+    </div>
+  );
+}
+
 export default function SkillsPage() {
   const [dir,    setDir]    = useState<MarqueeDir>('normal');
   const [speed,  setSpeed]  = useState(22);
@@ -107,13 +276,13 @@ export default function SkillsPage() {
   const smokeId = useRef(0);
 
   const COLORS = ['#ff8c42', '#fbbf24', '#ff4444', '#ffffff', '#ffdd00', '#ff6b6b'];
-  const heatIntensity = speed <= 1 ? Math.min(1, (1 - speed) / 0.8) : 0;
+  const heatIntensity = speed <= 4 ? Math.min(1, (4 - speed) / 3) : 0;
 
   useEffect(() => {
-    if (speed > 1.5) { setSparks([]); return; }
+    if (speed > 6) { setSparks([]); return; }
 
     const interval = setInterval(() => {
-      const count = speed <= 0.3 ? 4 : speed <= 0.6 ? 3 : speed <= 1 ? 2 : 1;
+      const count = speed <= 1 ? 4 : speed <= 2 ? 3 : speed <= 4 ? 2 : 1;
       for (let n = 0; n < count; n++) {
         const edge  = Math.random() > 0.5 ? -4 : 104;
         const isTop = edge < 0;
@@ -129,13 +298,13 @@ export default function SkillsPage() {
         setSparks((prev) => [...prev.slice(-70), newSpark]);
         setTimeout(() => setSparks((prev) => prev.filter((s) => s.id !== newSpark.id)), 850);
       }
-    }, Math.max(35, speed * 300));
+    }, Math.max(35, speed * 80));
 
     return () => clearInterval(interval);
   }, [speed]);
 
   useEffect(() => {
-    if (speed > 0.8) { setSmokes([]); return; }
+    if (speed > 3) { setSmokes([]); return; }
 
     const interval = setInterval(() => {
       const sz = 14 + Math.random() * 18;
@@ -148,7 +317,7 @@ export default function SkillsPage() {
       };
       setSmokes((prev) => [...prev.slice(-14), newSmoke]);
       setTimeout(() => setSmokes((prev) => prev.filter((s) => s.id !== newSmoke.id)), 2800);
-    }, Math.max(110, speed * 700));
+    }, Math.max(110, speed * 300));
 
     return () => clearInterval(interval);
   }, [speed]);
@@ -178,24 +347,6 @@ export default function SkillsPage() {
             </p>
           </motion.div>
 
-          <motion.div
-            initial={{ opacity: 0, x: 20 }}
-            animate={{ opacity: 1, x: 0 }}
-            transition={{ delay: 0.25, duration: 0.6, ease: [0.23, 1, 0.32, 1] }}
-            className="terminal rounded-xl p-4"
-            style={{ fontFamily: 'var(--font-jetbrains, monospace)' }}
-          >
-            <div className="text-[10px] text-white/25 mb-2 uppercase tracking-widest">// STACK ÖZET</div>
-            <div className="text-[11px] leading-loose text-white/50">
-              <span className="text-white/30">{'{'}</span>
-              <span className="ml-4 text-white/25"> &quot;uzmanlık&quot;:&nbsp;</span>
-              <span className="text-[#fbbf24]">[&quot;Python&quot;, &quot;C#&quot;, &quot;RPA&quot;],</span>
-              <span className="ml-4 text-white/25"> &quot;deneyim&quot;:&nbsp;</span>
-              <span className="text-[#fbbf24]">&quot;3+ yıl&quot;,&nbsp;</span>
-              <span className="text-[#86efac]">&quot;mid-senior&quot;</span>
-              <span className="text-white/30"> {'}'}</span>
-            </div>
-          </motion.div>
         </div>
 
         {/* ── Marquee: Görevler ── */}
@@ -209,9 +360,9 @@ export default function SkillsPage() {
                 title="Sola"
                 className="w-6 h-6 rounded flex items-center justify-center transition-all duration-150"
                 style={{
-                  background: dir === 'reverse' ? 'rgba(68,136,255,0.15)' : 'rgba(255,255,255,0.04)',
-                  border:     dir === 'reverse' ? '1px solid rgba(68,136,255,0.35)' : '1px solid rgba(255,255,255,0.08)',
-                  color:      dir === 'reverse' ? '#4488ff' : 'rgba(255,255,255,0.3)',
+                  background: dir === 'reverse' ? 'rgba(68,136,255,0.15)' : 'var(--surface)',
+                  border:     dir === 'reverse' ? '1px solid rgba(68,136,255,0.35)' : '1px solid var(--border)',
+                  color:      dir === 'reverse' ? 'var(--accent)' : 'var(--dim)',
                 }}
               >
                 <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><path d="M19 12H5m7-7-7 7 7 7" /></svg>
@@ -221,34 +372,34 @@ export default function SkillsPage() {
                 title="Sağa"
                 className="w-6 h-6 rounded flex items-center justify-center transition-all duration-150"
                 style={{
-                  background: dir === 'normal' ? 'rgba(68,136,255,0.15)' : 'rgba(255,255,255,0.04)',
-                  border:     dir === 'normal' ? '1px solid rgba(68,136,255,0.35)' : '1px solid rgba(255,255,255,0.08)',
-                  color:      dir === 'normal' ? '#4488ff' : 'rgba(255,255,255,0.3)',
+                  background: dir === 'normal' ? 'rgba(68,136,255,0.15)' : 'var(--surface)',
+                  border:     dir === 'normal' ? '1px solid rgba(68,136,255,0.35)' : '1px solid var(--border)',
+                  color:      dir === 'normal' ? 'var(--accent)' : 'var(--dim)',
                 }}
               >
                 <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><path d="M5 12h14m-7-7 7 7-7 7" /></svg>
               </button>
 
               {/* Ayraç */}
-              <span className="w-px h-4 mx-1" style={{ background: 'rgba(255,255,255,0.08)' }} />
+              <span className="w-px h-4 mx-1" style={{ background: 'var(--border)' }} />
 
               {/* Hız */}
               <button
                 onClick={() => setSpeed((s) => Math.min(60, s + 2))}
                 title="Yavaşlat"
                 className="w-6 h-6 rounded flex items-center justify-center transition-all duration-150 text-[13px] font-bold"
-                style={{ background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.08)', color: 'rgba(255,255,255,0.3)' }}
+                style={{ background: 'var(--surface)', border: '1px solid var(--border)', color: 'var(--dim)' }}
               >
                 −
               </button>
-              <span className="text-[9px] w-8 text-center" style={{ color: 'rgba(255,255,255,0.25)' }}>
-                {speed <= 0.3 ? '💀' : speed <= 1 ? '🔥' : `${Math.round(22 / speed * 10) / 10}x`}
+              <span className="text-[9px] w-8 text-center" style={{ color: 'var(--dim)' }}>
+                {speed <= 1 ? '🔥' : `${Math.round(22 / speed * 10) / 10}x`}
               </span>
               <button
-                onClick={() => setSpeed((s) => +Math.max(0.2, s > 2 ? s - 2 : s - 0.2).toFixed(1))}
+                onClick={() => setSpeed((s) => +Math.max(1, s > 2 ? s - 2 : s - 0.2).toFixed(1))}
                 title="Hızlandır"
                 className="w-6 h-6 rounded flex items-center justify-center transition-all duration-150 text-[13px] font-bold"
-                style={{ background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.08)', color: 'rgba(255,255,255,0.3)' }}
+                style={{ background: 'var(--surface)', border: '1px solid var(--border)', color: 'var(--dim)' }}
               >
                 +
               </button>

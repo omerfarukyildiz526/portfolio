@@ -16,14 +16,14 @@ export default function ProjectsPage() {
           >
             <div className="flex items-center gap-3 mb-4" style={{ fontFamily: 'var(--font-jetbrains, monospace)' }}>
               <span className="text-[11px] font-black accent uppercase tracking-widest">GET</span>
-              <span className="text-[11px] text-white/25">/api/projects</span>
+              <span className="text-[11px]" style={{ color: 'var(--dim)' }}>/api/projects</span>
               <span className="ml-2 text-[10px] text-[#4488ff]/60">→ 200 OK</span>
             </div>
-            <h1 className="font-black uppercase italic tracking-tighter leading-none text-white heading-primary accent-orange-glow"
+            <h1 className="font-black uppercase italic tracking-tighter leading-none heading-primary accent-orange-glow"
                 style={{ fontSize: 'clamp(24px, 4vw, 52px)' }}>
               PROJELER.
             </h1>
-            <p className="text-base text-white/35 mt-4 max-w-lg leading-relaxed">
+            <p className="text-base mt-4 max-w-lg leading-relaxed" style={{ color: 'var(--dim)' }}>
               GitHub&apos;daki public repositoryler. Tıklayarak README&apos;yi terminalde görüntüleyebilirsin.
             </p>
           </motion.div>
@@ -35,18 +35,18 @@ export default function ProjectsPage() {
             className="terminal rounded-xl p-5"
             style={{ fontFamily: 'var(--font-jetbrains, monospace)' }}
           >
-            <div className="text-[10px] text-white/25 mb-3 uppercase tracking-widest">// REPO İSTATİSTİKLERİ</div>
-            <div className="text-[11px] leading-loose text-white/50">
-              <span className="text-white/30">{'{'}</span><br />
-              <span className="ml-4 text-white/25">&quot;kaynak&quot;:&nbsp;</span>
-              <span className="text-[#fbbf24]">&quot;github.com/OmerFaruk-YILDIZ&quot;,</span><br />
-              <span className="ml-4 text-white/25">&quot;sıralama&quot;:&nbsp;</span>
-              <span className="text-[#4488ff]">&quot;son güncelleme&quot;,</span><br />
-              <span className="ml-4 text-white/25">&quot;diller&quot;:&nbsp;</span>
-              <span className="text-[#86efac]">[&quot;Python&quot;, &quot;C#&quot;, &quot;TypeScript&quot;],</span><br />
-              <span className="ml-4 text-white/25">&quot;görüntüle&quot;:&nbsp;</span>
-              <span className="text-[#fbbf24]">&quot;readme terminalde açılır&quot;</span><br />
-              <span className="text-white/30">{'}'}</span>
+            <div className="text-[10px] mb-3 uppercase tracking-widest" style={{ color: 'var(--dim-soft)' }}>// REPO İSTATİSTİKLERİ</div>
+            <div className="text-[11px] leading-loose">
+              <span style={{ color: 'var(--dim-soft)' }}>{'{'}</span><br />
+              <span className="ml-4" style={{ color: 'var(--dim-soft)' }}>&quot;kaynak&quot;:&nbsp;</span>
+              <span style={{ color: '#d97706' }}>&quot;github.com/OmerFaruk-YILDIZ&quot;,</span><br />
+              <span className="ml-4" style={{ color: 'var(--dim-soft)' }}>&quot;sıralama&quot;:&nbsp;</span>
+              <span style={{ color: 'var(--accent)' }}>&quot;son güncelleme&quot;,</span><br />
+              <span className="ml-4" style={{ color: 'var(--dim-soft)' }}>&quot;diller&quot;:&nbsp;</span>
+              <span style={{ color: '#16a34a' }}>[&quot;Python&quot;, &quot;C#&quot;, &quot;TypeScript&quot;],</span><br />
+              <span className="ml-4" style={{ color: 'var(--dim-soft)' }}>&quot;görüntüle&quot;:&nbsp;</span>
+              <span style={{ color: '#d97706' }}>&quot;readme terminalde açılır&quot;</span><br />
+              <span style={{ color: 'var(--dim-soft)' }}>{'}'}</span>
             </div>
           </motion.div>
         </div>

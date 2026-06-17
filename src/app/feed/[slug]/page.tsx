@@ -118,9 +118,9 @@ export default function FeedPostPage({ params }: { params: Promise<{ slug: strin
           <Link
             href="/feed"
             className="inline-flex items-center gap-2 transition-colors"
-            style={{ fontFamily: 'var(--font-jetbrains, monospace)', fontSize: '10px', letterSpacing: '0.12em', textTransform: 'uppercase', color: 'rgba(255,255,255,0.3)' }}
-            onMouseEnter={e => (e.currentTarget.style.color = 'rgba(255,255,255,0.7)')}
-            onMouseLeave={e => (e.currentTarget.style.color = 'rgba(255,255,255,0.3)')}
+            style={{ fontFamily: 'var(--font-jetbrains, monospace)', fontSize: '10px', letterSpacing: '0.12em', textTransform: 'uppercase', color: 'var(--dim-soft)' }}
+            onMouseEnter={e => (e.currentTarget.style.color = 'var(--dim)')}
+            onMouseLeave={e => (e.currentTarget.style.color = 'var(--dim-soft)')}
           >
             <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
               <path d="M19 12H5M12 5l-7 7 7 7" />
@@ -182,13 +182,13 @@ export default function FeedPostPage({ params }: { params: Promise<{ slug: strin
           </div>
 
           {/* Excerpt */}
-          <p className="text-sm text-white/35 mt-4 leading-loose max-w-xl pl-4" style={{ borderLeft: '2px solid rgba(255,255,255,0.07)' }}>
+          <p className="text-sm text-white/35 mt-4 leading-loose max-w-xl pl-4" style={{ borderLeft: '2px solid var(--border)' }}>
             {post.excerpt}
           </p>
         </motion.div>
 
         {/* Divider */}
-        <div className="h-px mb-10" style={{ background: 'rgba(255,255,255,0.05)' }} />
+        <div className="h-px mb-10" style={{ background: 'var(--border)' }} />
 
         {/* Content blocks */}
         <div>
@@ -203,14 +203,14 @@ export default function FeedPostPage({ params }: { params: Promise<{ slug: strin
           animate={{ opacity: 1 }}
           transition={{ delay: 0.8, duration: 0.5 }}
           className="mt-20 pt-8 flex items-center justify-between"
-          style={{ borderTop: '1px solid rgba(255,255,255,0.05)' }}
+          style={{ borderTop: '1px solid var(--border)' }}
         >
           <Link
             href="/feed"
             className="inline-flex items-center gap-2 transition-colors"
-            style={{ fontFamily: 'var(--font-jetbrains, monospace)', fontSize: '10px', letterSpacing: '0.12em', textTransform: 'uppercase', color: 'rgba(255,255,255,0.3)' }}
-            onMouseEnter={e => (e.currentTarget.style.color = 'rgba(255,255,255,0.7)')}
-            onMouseLeave={e => (e.currentTarget.style.color = 'rgba(255,255,255,0.3)')}
+            style={{ fontFamily: 'var(--font-jetbrains, monospace)', fontSize: '10px', letterSpacing: '0.12em', textTransform: 'uppercase', color: 'var(--dim-soft)' }}
+            onMouseEnter={e => (e.currentTarget.style.color = 'var(--dim)')}
+            onMouseLeave={e => (e.currentTarget.style.color = 'var(--dim-soft)')}
           >
             <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
               <path d="M19 12H5M12 5l-7 7 7 7" />

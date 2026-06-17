@@ -69,12 +69,12 @@ export default function Projects() {
               animate={{ opacity: 1, x: 0 }}
               transition={{ delay: i * 0.04 }}
               onClick={() => handleSelect(repo.full_name)}
-              className={`p-4 md:p-5 rounded-xl border transition-all duration-250 cursor-pointer group relative overflow-hidden ${
-                isSelected
-                  ? 'border-[#4488ff]/35 bg-[#4488ff]/[0.03]'
-                  : 'border-white/5 hover:border-white/12 bg-white/[0.01]'
-              }`}
-              style={isSelected ? { boxShadow: '0 0 16px rgba(68,136,255,0.06)' } : {}}
+              className="p-4 md:p-5 rounded-xl border transition-all duration-250 cursor-pointer group relative overflow-hidden card"
+              style={isSelected ? {
+                borderColor: 'rgba(68,136,255,0.35)',
+                background: 'rgba(68,136,255,0.06)',
+                boxShadow: '0 0 16px rgba(68,136,255,0.08)',
+              } : {}}
             >
               {isSelected && (
                 <div className="absolute left-0 top-0 bottom-0 w-[2px] rounded-l-xl bg-[#4488ff]"
@@ -88,18 +88,19 @@ export default function Projects() {
                 </span>
               </div>
 
-              <h3 className="text-sm font-black uppercase tracking-tight truncate text-white/70 group-hover:text-white transition-colors">
+              <h3 className="text-sm font-black uppercase tracking-tight truncate transition-colors"
+                  style={{ color: 'var(--fg)' }}>
                 {repo.name.replace(/-/g, '_')}
               </h3>
               {repo.description && (
-                <p className="text-[10px] text-white/25 mt-1 truncate font-mono">{repo.description}</p>
+                <p className="text-[10px] mt-1 truncate font-mono" style={{ color: 'var(--dim)' }}>{repo.description}</p>
               )}
 
               <div className="flex gap-4 mt-2">
                 {repo.stargazers_count > 0 && (
-                  <span className="text-[9px] text-white/20 font-mono">★ {repo.stargazers_count}</span>
+                  <span className="text-[9px] font-mono" style={{ color: 'var(--dim-soft)' }}>★ {repo.stargazers_count}</span>
                 )}
-                {repo.fork && <span className="text-[9px] text-white/15 font-mono uppercase tracking-widest">fork</span>}
+                {repo.fork && <span className="text-[9px] font-mono uppercase tracking-widest" style={{ color: 'var(--dim-soft)' }}>fork</span>}
               </div>
 
               {isSelected && (
@@ -115,7 +116,8 @@ export default function Projects() {
         {/* Mobil geri butonu */}
         <button
           onClick={() => setMobileView('list')}
-          className="lg:hidden flex items-center gap-2 mb-4 text-[10px] font-mono uppercase tracking-widest text-white/35 hover:text-white/70 transition-colors"
+          className="lg:hidden flex items-center gap-2 mb-4 text-[10px] font-mono uppercase tracking-widest transition-colors"
+          style={{ color: 'var(--dim)' }}
         >
           <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
             <path d="M19 12H5M12 5l-7 7 7 7" />
@@ -146,7 +148,8 @@ export default function Projects() {
                     {selected.split('/')[1]} / README.md
                   </span>
                 </div>
-                <span className="text-[9px] font-mono text-white/15 uppercase tracking-[0.2em] hidden sm:block">github://raw</span>
+                <span className="text-[9px] font-mono uppercase tracking-[0.2em] hidden sm:block"
+                      style={{ color: 'var(--dim-soft)' }}>github://raw</span>
               </div>
 
               <div className="flex-1 overflow-y-auto px-4 md:px-6 py-4 md:py-5 scrollbar-hide">

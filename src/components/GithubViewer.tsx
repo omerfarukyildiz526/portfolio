@@ -169,21 +169,21 @@ export default function GithubViewer({ repoPath }: { repoPath: string }) {
   const components: Components = {
     // Headings
     h1: ({ children }) => (
-      <h1 style={{ fontSize: '2em', fontWeight: 700, borderBottom: '1px solid rgba(48,54,61,1)', paddingBottom: '0.3em', marginTop: '1.2em', marginBottom: '0.8em', color: '#e6edf3' }}>{children}</h1>
+      <h1 style={{ fontSize: '2em', fontWeight: 700, borderBottom: '1px solid var(--border)', paddingBottom: '0.3em', marginTop: '1.2em', marginBottom: '0.8em', color: 'var(--fg)' }}>{children}</h1>
     ),
     h2: ({ children }) => (
-      <h2 style={{ fontSize: '1.5em', fontWeight: 700, borderBottom: '1px solid rgba(48,54,61,1)', paddingBottom: '0.3em', marginTop: '1.2em', marginBottom: '0.6em', color: '#e6edf3' }}>{children}</h2>
+      <h2 style={{ fontSize: '1.5em', fontWeight: 700, borderBottom: '1px solid var(--border)', paddingBottom: '0.3em', marginTop: '1.2em', marginBottom: '0.6em', color: 'var(--fg)' }}>{children}</h2>
     ),
     h3: ({ children }) => (
-      <h3 style={{ fontSize: '1.25em', fontWeight: 700, marginTop: '1em', marginBottom: '0.5em', color: '#e6edf3' }}>{children}</h3>
+      <h3 style={{ fontSize: '1.25em', fontWeight: 700, marginTop: '1em', marginBottom: '0.5em', color: 'var(--fg)' }}>{children}</h3>
     ),
     h4: ({ children }) => (
-      <h4 style={{ fontSize: '1em', fontWeight: 700, marginTop: '0.8em', marginBottom: '0.4em', color: '#e6edf3' }}>{children}</h4>
+      <h4 style={{ fontSize: '1em', fontWeight: 700, marginTop: '0.8em', marginBottom: '0.4em', color: 'var(--fg)' }}>{children}</h4>
     ),
 
     // Paragraphs
     p: ({ children }) => (
-      <p style={{ marginTop: '0', marginBottom: '1em', lineHeight: 1.7, color: '#e6edf3' }}>{children}</p>
+      <p style={{ marginTop: '0', marginBottom: '1em', lineHeight: 1.7, color: 'var(--dim)' }}>{children}</p>
     ),
 
     // Links
@@ -239,19 +239,19 @@ export default function GithubViewer({ repoPath }: { repoPath: string }) {
 
     // Blockquote
     blockquote: ({ children }) => (
-      <blockquote style={{ borderLeft: '4px solid rgba(48,54,61,1)', paddingLeft: '1em', margin: '0 0 1em', color: '#8b949e' }}>
+      <blockquote style={{ borderLeft: '4px solid var(--border)', paddingLeft: '1em', margin: '0 0 1em', color: 'var(--dim)' }}>
         {children}
       </blockquote>
     ),
 
     // Unordered list
     ul: ({ children }) => (
-      <ul style={{ paddingLeft: '2em', marginBottom: '1em', listStyleType: 'disc', color: '#e6edf3' }}>{children}</ul>
+      <ul style={{ paddingLeft: '2em', marginBottom: '1em', listStyleType: 'disc', color: 'var(--dim)' }}>{children}</ul>
     ),
 
     // Ordered list
     ol: ({ children }) => (
-      <ol style={{ paddingLeft: '2em', marginBottom: '1em', listStyleType: 'decimal', color: '#e6edf3' }}>{children}</ol>
+      <ol style={{ paddingLeft: '2em', marginBottom: '1em', listStyleType: 'decimal', color: 'var(--dim)' }}>{children}</ol>
     ),
 
     li: ({ children, ...props }) => {
@@ -276,30 +276,30 @@ export default function GithubViewer({ repoPath }: { repoPath: string }) {
         <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '14px' }}>{children}</table>
       </div>
     ),
-    thead: ({ children }) => <thead style={{ background: 'rgba(22,27,34,1)' }}>{children}</thead>,
+    thead: ({ children }) => <thead style={{ background: 'var(--bg-light)' }}>{children}</thead>,
     th: ({ children }) => (
-      <th style={{ padding: '8px 13px', border: '1px solid rgba(48,54,61,1)', fontWeight: 600, textAlign: 'left', color: '#e6edf3' }}>
+      <th style={{ padding: '8px 13px', border: '1px solid var(--border)', fontWeight: 600, textAlign: 'left', color: 'var(--fg)' }}>
         {children}
       </th>
     ),
     td: ({ children }) => (
-      <td style={{ padding: '8px 13px', border: '1px solid rgba(48,54,61,1)', color: '#e6edf3' }}>
+      <td style={{ padding: '8px 13px', border: '1px solid var(--border)', color: 'var(--dim)' }}>
         {children}
       </td>
     ),
     tr: ({ children }) => (
-      <tr style={{ borderTop: '1px solid rgba(48,54,61,1)' }}
-          onMouseEnter={e => (e.currentTarget.style.background = 'rgba(255,255,255,0.025)')}
+      <tr style={{ borderTop: '1px solid var(--border)' }}
+          onMouseEnter={e => (e.currentTarget.style.background = 'var(--surface)')}
           onMouseLeave={e => (e.currentTarget.style.background = 'transparent')}>
         {children}
       </tr>
     ),
 
     // Horizontal rule
-    hr: () => <hr style={{ border: 'none', borderTop: '1px solid rgba(48,54,61,1)', margin: '1.5em 0' }} />,
+    hr: () => <hr style={{ border: 'none', borderTop: '1px solid var(--border)', margin: '1.5em 0' }} />,
 
     // Strong / Em
-    strong: ({ children }) => <strong style={{ fontWeight: 700, color: '#e6edf3' }}>{children}</strong>,
+    strong: ({ children }) => <strong style={{ fontWeight: 700, color: 'var(--fg)' }}>{children}</strong>,
     em:     ({ children }) => <em style={{ fontStyle: 'italic' }}>{children}</em>,
 
     // Strikethrough (GFM)
@@ -325,14 +325,14 @@ export default function GithubViewer({ repoPath }: { repoPath: string }) {
   );
 
   return (
-    <div style={{ fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif', color: '#e6edf3', fontSize: '14px', lineHeight: 1.6 }}>
+    <div style={{ fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif', color: 'var(--fg)', fontSize: '14px', lineHeight: 1.6 }}>
       {/* GitHub-style README header */}
-      <div className="flex items-center gap-2 mb-4 pb-3" style={{ borderBottom: '1px solid rgba(48,54,61,1)' }}>
-        <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" fill="currentColor" viewBox="0 0 16 16" style={{ color: '#8b949e', flexShrink: 0 }}>
+      <div className="flex items-center gap-2 mb-4 pb-3" style={{ borderBottom: '1px solid var(--border)' }}>
+        <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" fill="currentColor" viewBox="0 0 16 16" style={{ color: 'var(--dim)', flexShrink: 0 }}>
           <path d="M14.414 0 14 .586V4h-2V2H4v2H2V.586L1.586 0H0v2h.586L2 .586V4H0v2h2v6H0v2h2v2h2v-2h8v2h2v-2h2v-2h-2V6h2V4h-2V.586L15.414 0zM4 4h8v2H4zm0 4h8v4H4z"/>
         </svg>
-        <span className="text-[12px] font-semibold" style={{ color: '#e6edf3' }}>README.md</span>
-        <span className="text-[10px] font-mono ml-auto" style={{ color: '#8b949e' }}>
+        <span className="text-[12px] font-semibold" style={{ color: 'var(--fg)' }}>README.md</span>
+        <span className="text-[10px] font-mono ml-auto" style={{ color: 'var(--dim)' }}>
           {repoPath} / {branch}
         </span>
       </div>

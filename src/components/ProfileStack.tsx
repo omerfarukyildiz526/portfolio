@@ -35,11 +35,11 @@ function Photo({
         borderRadius: '50%',
         cursor: isSmall ? 'pointer' : 'default',
         border: isSmall
-          ? '2px solid rgba(255,255,255,0.12)'
-          : '3px solid rgba(255,255,255,0.16)',
+          ? '2px solid var(--border)'
+          : '3px solid var(--border)',
         boxShadow: isSmall
           ? '0 6px 24px rgba(0,0,0,0.55)'
-          : '0 16px 56px rgba(0,0,0,0.65), 0 0 0 1px rgba(255,255,255,0.05)',
+          : '0 16px 56px rgba(0,0,0,0.65)',
         position: 'absolute',
         transform: isSmall ? undefined : undefined,
       }}

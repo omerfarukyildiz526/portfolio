@@ -72,10 +72,11 @@ const LINKS = [
   },
 ];
 
-const Arrow = () => (
+const Arrow = ({ color }: { color: string }) => (
   <svg xmlns="http://www.w3.org/2000/svg" width="13" height="13" viewBox="0 0 24 24" fill="none"
        stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"
-       className="text-white/20 group-hover:text-white/50 group-hover:translate-x-0.5 transition-all duration-200 flex-shrink-0">
+       className="group-hover:translate-x-0.5 transition-all duration-200 flex-shrink-0"
+       style={{ color: color + '40' }}>
     <path d="M5 12h14"/><path d="m12 5 7 7-7 7"/>
   </svg>
 );
@@ -99,34 +100,42 @@ export default function Contact() {
             transition={{ delay: i * 0.1, duration: 0.6, ease: [0.23, 1, 0.32, 1] }}
             whileHover={{ scale: 1.015 }}
             whileTap={{ scale: 0.985 }}
-            className="group card rounded-xl border overflow-hidden block transition-all duration-250"
-            style={{ gridColumn: link.wide ? '1 / -1' : undefined }}
+            className="group card rounded-xl overflow-hidden block transition-all duration-250"
+            style={{
+              gridColumn: link.wide ? '1 / -1' : undefined,
+              borderLeft: `3px solid ${mc}55`,
+            }}
           >
             {link.wide ? (
               /* ── E-Posta: geniş kart, yatay düzen ── */
               <div className="p-6 flex flex-col sm:flex-row sm:items-center gap-6">
                 {/* Sol: ikon + isim */}
                 <div className="flex items-center gap-4 flex-shrink-0">
-                  <div className="p-3 rounded-xl border border-white/8 group-hover:border-white/20 transition-colors" style={{ color: mc }}>
+                  <div className="p-3 rounded-xl transition-colors"
+                    style={{
+                      color: mc,
+                      background: mc + '18',
+                      border: `1px solid ${mc}35`,
+                    }}>
                     {link.icon}
                   </div>
                   <div>
                     <div className="flex items-center gap-2 mb-1" style={{ fontFamily: 'var(--font-jetbrains, monospace)' }}>
                       <span className="text-[10px] font-black uppercase tracking-widest" style={{ color: mc }}>{link.method}</span>
-                      <span className="text-[10px] text-white/20">{link.endpoint}</span>
+                      <span className="text-[10px]" style={{ color: 'var(--dim)' }}>{link.endpoint}</span>
                     </div>
-                    <h3 className="text-lg font-black uppercase italic tracking-tighter text-white">{link.name}</h3>
-                    <p className="text-[10px] font-mono text-white/25 tracking-tight">{link.detail}</p>
+                    <h3 className="text-lg font-black uppercase italic tracking-tighter" style={{ color: 'var(--fg)' }}>{link.name}</h3>
+                    <p className="text-[10px] font-mono tracking-tight" style={{ color: 'var(--dim)' }}>{link.detail}</p>
                   </div>
                 </div>
 
                 {/* Orta: açıklama */}
-                <p className="text-[11px] text-white/30 leading-relaxed font-mono flex-1">{link.desc}</p>
+                <p className="text-[11px] leading-relaxed font-mono flex-1" style={{ color: 'var(--dim)' }}>{link.desc}</p>
 
                 {/* Sağ: durum + ok */}
                 <div className="flex items-center gap-3 flex-shrink-0">
-                  <span className="text-[9px] font-mono" style={{ color: mc, opacity: 0.5 }}>{link.status}</span>
-                  <Arrow />
+                  <span className="text-[9px] font-mono" style={{ color: mc, opacity: 0.7 }}>{link.status}</span>
+                  <Arrow color={mc} />
                 </div>
               </div>
             ) : (
@@ -135,23 +144,28 @@ export default function Contact() {
                 <div>
                   <div className="flex items-center gap-2 mb-4" style={{ fontFamily: 'var(--font-jetbrains, monospace)' }}>
                     <span className="text-[10px] font-black uppercase tracking-widest" style={{ color: mc }}>{link.method}</span>
-                    <span className="text-[10px] text-white/20">{link.endpoint}</span>
+                    <span className="text-[10px]" style={{ color: 'var(--dim)' }}>{link.endpoint}</span>
                   </div>
                   <div className="flex items-center gap-4 mb-4">
-                    <div className="p-3 rounded-xl border border-white/8 group-hover:border-white/20 transition-colors" style={{ color: mc }}>
+                    <div className="p-3 rounded-xl transition-colors"
+                      style={{
+                        color: mc,
+                        background: mc + '18',
+                        border: `1px solid ${mc}35`,
+                      }}>
                       {link.icon}
                     </div>
                     <div>
-                      <h3 className="text-lg font-black uppercase italic tracking-tighter text-white">{link.name}</h3>
-                      <p className="text-[10px] font-mono text-white/25 tracking-tight">{link.detail}</p>
+                      <h3 className="text-lg font-black uppercase italic tracking-tighter" style={{ color: 'var(--fg)' }}>{link.name}</h3>
+                      <p className="text-[10px] font-mono tracking-tight" style={{ color: 'var(--dim)' }}>{link.detail}</p>
                     </div>
                   </div>
-                  <p className="text-[11px] text-white/30 leading-relaxed font-mono">{link.desc}</p>
+                  <p className="text-[11px] leading-relaxed font-mono" style={{ color: 'var(--dim)' }}>{link.desc}</p>
                 </div>
 
                 <div className="flex items-center justify-between pt-2">
-                  <span className="text-[9px] font-mono" style={{ color: mc, opacity: 0.5 }}>{link.status}</span>
-                  <Arrow />
+                  <span className="text-[9px] font-mono" style={{ color: mc, opacity: 0.7 }}>{link.status}</span>
+                  <Arrow color={mc} />
                 </div>
               </div>
             )}

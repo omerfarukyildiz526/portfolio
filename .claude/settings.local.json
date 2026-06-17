@@ -13,7 +13,11 @@
       "PowerShell(Get-ChildItem -Path \"C:\\\\Users\\\\omer.yildiz\\\\Desktop\\\\PORTFOLYOM\\\\backend-portfolio\\\\src\" -Recurse -Force | ForEach-Object { $_.FullName })",
       "Bash(mkdir -p \"C:/Users/omer.yildiz/Desktop/PORTFOLYOM/backend-portfolio/src/app/feed/[slug]\")",
       "Bash(dir \"C:\\\\Users\\\\omer.yildiz\\\\Desktop\\\\PORTFOLYOM\\\\backend-portfolio\\\\public\")",
-      "PowerShell(Get-NetTCPConnection -State Listen -LocalPort 3000 -ErrorAction SilentlyContinue)"
+      "PowerShell(Get-NetTCPConnection -State Listen -LocalPort 3000 -ErrorAction SilentlyContinue)",
+      "WebFetch(domain:www.btkakademi.gov.tr)",
+      "WebFetch(domain:gelecegiyazanlar.turkcell.com.tr)",
+      "WebFetch(domain:alttab.gungoren.bel.tr)",
+      "WebFetch(domain:www.istinye.edu.tr)"
     ],
     "additionalDirectories": [
       "C:\\Users\\omer.yildiz\\Desktop\\PORTFOLYOM\\backend-portfolio\\src\\app\\feed"

@@ -34,7 +34,7 @@ function CodeBlock({ block, index }: { block: ContentBlock; index: number }) {
           onClick={copy}
           className="flex items-center gap-1.5 text-[9px] font-mono uppercase tracking-widest transition-colors px-2 py-0.5 rounded"
           style={{
-            color: copied ? '#4ade80' : 'rgba(255,255,255,0.25)',
+            color: copied ? '#4ade80' : 'var(--dim)',
             background: copied ? 'rgba(74,222,128,0.08)' : 'transparent',
           }}
         >
@@ -119,6 +119,7 @@ export default function FeedPage() {
   const [flippingSlug, setFlippingSlug] = useState<string | null>(null);
   const [progress,    setProgress]    = useState(0);
   const [direction,   setDirection]   = useState(0);
+  const [viewMode,    setViewMode]    = useState<'grid' | 'list'>('grid');
 
   const scrollRef = useRef<HTMLDivElement>(null);
 
@@ -166,21 +167,100 @@ export default function FeedPage() {
 
       {/* Header */}
       <motion.div
-        initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.5, ease: [0.23, 1, 0.32, 1] }}
-        className="px-8 md:px-14 lg:px-24 xl:px-32 mb-5 flex items-center justify-between"
-        style={{ fontFamily: 'var(--font-jetbrains, monospace)' }}
+        initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.6, ease: [0.23, 1, 0.32, 1] }}
+        className="px-8 md:px-14 lg:px-24 xl:px-32 mb-10"
       >
-        <div className="flex items-center gap-3">
+        <div className="flex items-center gap-3 mb-3" style={{ fontFamily: 'var(--font-jetbrains, monospace)' }}>
           <span className="text-[11px] font-black text-[#4488ff] uppercase tracking-widest">GET</span>
           <span className="text-[11px] text-white/25">/api/feed</span>
-          <span className="ml-2 text-[10px] text-[#4488ff]/50">→ 200 OK</span>
+          <span className="ml-2 text-[10px] text-[#4488ff]/60">→ 200 OK</span>
         </div>
-        <span className="text-[10px] text-white/20">{POSTS.length} yazı</span>
+        <h1
+          className="font-black uppercase italic tracking-tighter leading-none text-white heading-primary accent-orange-glow"
+          style={{ fontSize: 'clamp(24px, 4vw, 52px)' }}
+        >
+          FEED.
+        </h1>
+        <div className="flex items-center justify-between mt-2">
+          <p className="text-sm text-white/30 max-w-lg leading-relaxed">
+            Notlar, yazılar ve teknik içerikler.
+          </p>
+          <div className="flex items-center gap-1 p-1 rounded-lg" style={{ background: 'var(--surface)', border: '1px solid var(--border)' }}>
+            <button
+              onClick={() => setViewMode('grid')}
+              className="w-7 h-7 rounded flex items-center justify-center transition-all duration-150"
+              style={{
+                background: viewMode === 'grid' ? 'rgba(68,136,255,0.15)' : 'transparent',
+                color: viewMode === 'grid' ? 'var(--accent)' : 'var(--dim)',
+              }}
+              title="Kart görünümü"
+            >
+              <svg width="12" height="12" viewBox="0 0 24 24" fill="currentColor">
+                <rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/>
+                <rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/>
+              </svg>
+            </button>
+            <button
+              onClick={() => setViewMode('list')}
+              className="w-7 h-7 rounded flex items-center justify-center transition-all duration-150"
+              style={{
+                background: viewMode === 'list' ? 'rgba(68,136,255,0.15)' : 'transparent',
+                color: viewMode === 'list' ? 'var(--accent)' : 'var(--dim)',
+              }}
+              title="Liste görünümü"
+            >
+              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
+                <line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="18" x2="21" y2="18"/>
+              </svg>
+            </button>
+          </div>
+        </div>
       </motion.div>
 
-      {/* ── Grid ── */}
+      {/* ── İçerik ── */}
       <div className="px-8 md:px-14 lg:px-24 xl:px-32">
+
+        {/* Liste görünümü */}
+        {viewMode === 'list' && (
+          <div className="flex flex-col gap-2">
+            <AnimatePresence mode="popLayout">
+              {filteredPosts.map((post, i) => (
+                <motion.div
+                  key={post.slug}
+                  initial={{ opacity: 0, y: 10 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  exit={{ opacity: 0, y: -10 }}
+                  transition={{ delay: i * 0.03, duration: 0.3, ease: [0.23, 1, 0.32, 1] }}
+                  onClick={() => open(post)}
+                  className="flex items-center gap-4 p-4 rounded-xl cursor-pointer group transition-all duration-200"
+                  style={{ background: 'var(--surface)', border: '1px solid var(--border)' }}
+                  onMouseEnter={e => (e.currentTarget.style.borderColor = 'rgba(68,136,255,0.35)')}
+                  onMouseLeave={e => (e.currentTarget.style.borderColor = 'var(--border)')}
+                >
+                  <div className="w-10 h-10 rounded-lg flex items-center justify-center flex-shrink-0 text-xl"
+                       style={{ background: `linear-gradient(135deg, ${post.gradient[0]}, ${post.gradient[1]})` }}>
+                    {post.symbol}
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <p className="text-sm font-bold truncate transition-colors" style={{ color: 'var(--fg)' }}>{post.title}</p>
+                    <p className="text-[11px] truncate mt-0.5" style={{ color: 'var(--dim)' }}>{post.excerpt}</p>
+                  </div>
+                  <div className="flex items-center gap-3 flex-shrink-0">
+                    <span className="text-[10px] font-mono hidden sm:block" style={{ color: 'var(--dim-soft)' }}>{post.date}</span>
+                    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"
+                         style={{ color: 'var(--dim-soft)' }} className="group-hover:opacity-100 transition-opacity">
+                      <path d="M5 12h14m-7-7 7 7-7 7"/>
+                    </svg>
+                  </div>
+                </motion.div>
+              ))}
+            </AnimatePresence>
+          </div>
+        )}
+
+        {/* Kart görünümü */}
+        {viewMode === 'grid' && (
         <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-3 md:gap-4"
              style={{ perspective: '1200px' }}>
           <AnimatePresence mode="popLayout">
@@ -236,6 +316,7 @@ export default function FeedPage() {
             ))}
           </AnimatePresence>
         </div>
+        )}
       </div>
 
       {/* ── Açılmış yazı ── */}
@@ -261,7 +342,7 @@ export default function FeedPage() {
               transition={{ duration: 0.35, ease: [0.23, 1, 0.32, 1] }}
             >
               {/* Progress bar */}
-              <div className="fixed top-0 left-0 right-0 z-10 h-[2px]" style={{ background: 'rgba(255,255,255,0.05)' }}>
+              <div className="fixed top-0 left-0 right-0 z-10 h-[2px]" style={{ background: 'var(--border)' }}>
                 <motion.div
                   className="h-full"
                   style={{ background: `linear-gradient(90deg, ${selected.gradient[0]}, ${selected.gradient[1]})`, width: `${progress * 100}%` }}
@@ -275,7 +356,7 @@ export default function FeedPage() {
                 <div className="flex items-center justify-between mb-12">
                   <button onClick={close}
                     className="inline-flex items-center gap-2 transition-colors"
-                    style={{ fontFamily: 'var(--font-jetbrains, monospace)', fontSize: '10px', letterSpacing: '0.12em', textTransform: 'uppercase', color: 'rgba(255,255,255,0.3)' }}>
+                    style={{ fontFamily: 'var(--font-jetbrains, monospace)', fontSize: '10px', letterSpacing: '0.12em', textTransform: 'uppercase', color: 'var(--dim)' }}>
                     <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
                       <path d="M19 12H5M12 5l-7 7 7 7" />
                     </svg>
@@ -287,7 +368,7 @@ export default function FeedPage() {
                     </span>
                     <button onClick={close}
                       className="w-7 h-7 rounded-full flex items-center justify-center transition-colors"
-                      style={{ background: 'rgba(255,255,255,0.06)', color: 'rgba(255,255,255,0.4)' }}>
+                      style={{ background: 'var(--surface)', color: 'var(--dim)' }}>
                       <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
                         <path d="M18 6 6 18M6 6l12 12" />
                       </svg>
@@ -332,12 +413,12 @@ export default function FeedPage() {
                         <span className="text-[10px] text-white/30">{selected.readTime} dakika okuma</span>
                       </div>
                       <p className="text-sm text-white/35 mt-4 leading-loose max-w-xl pl-4"
-                         style={{ borderLeft: '2px solid rgba(255,255,255,0.07)' }}>
+                         style={{ borderLeft: '2px solid var(--border)' }}>
                         {selected.excerpt}
                       </p>
                     </div>
 
-                    <div className="h-px mb-10" style={{ background: 'rgba(255,255,255,0.05)' }} />
+                    <div className="h-px mb-10" style={{ background: 'var(--border)' }} />
 
                     {/* İçerik blokları */}
                     <div>
@@ -350,7 +431,7 @@ export default function FeedPage() {
 
                 {/* ── Önceki / Sonraki ── */}
                 <div className="mt-16 pt-8 grid grid-cols-2 gap-4"
-                     style={{ borderTop: '1px solid rgba(255,255,255,0.05)' }}>
+                     style={{ borderTop: '1px solid var(--border)' }}>
                   {hasPrev ? (
                     <button
                       onClick={() => goTo(POSTS[currentIndex - 1], -1)}
