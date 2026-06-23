@@ -33,65 +33,79 @@ export default function NavBar() {
       transition={{ duration: 0.6, ease: [0.23, 1, 0.32, 1] }}
       className="nav-bar fixed top-0 left-0 right-0 z-50 h-14"
     >
-      <div className="max-w-[1400px] mx-auto h-full px-5 md:px-8 flex items-center gap-1">
+      <div className="max-w-[1400px] mx-auto h-full px-3 md:px-8 flex items-center gap-1">
 
-        {/* Routes */}
-        <nav className="flex items-center gap-0.5 flex-1" aria-label="Primary navigation">
-          {ROUTES.map((r) => {
-            const isActive = pathname === r.path;
-            const isPost   = r.method === 'POST';
+        {/* Routes — horizontally scrollable on mobile */}
+        <div className="relative flex-1 min-w-0">
+          <nav className="flex items-center gap-0.5 overflow-x-auto scrollbar-hide" aria-label="Primary navigation">
+            {ROUTES.map((r) => {
+              const isActive = pathname === r.path;
+              const isPost   = r.method === 'POST';
 
-            return (
-              <Link
-                key={r.path}
-                href={r.path}
-                aria-current={isActive ? 'page' : undefined}
-              >
-                <motion.span
-                  whileHover={{ scale: 1.02 }}
-                  whileTap={{ scale: 0.97 }}
-                  className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-md text-sm transition-colors"
-                  style={{
-                    background: isActive ? (isPost ? 'color-mix(in srgb, var(--accent-post) 10%, transparent)' : 'color-mix(in srgb, var(--accent) 10%, transparent)') : 'transparent',
-                  }}
+              return (
+                <Link
+                  key={r.path}
+                  href={r.path}
+                  className="flex-shrink-0"
+                  aria-current={isActive ? 'page' : undefined}
+                  aria-label={r.label}
                 >
-                  {/* Method badge — monospace, intentional */}
-                  <span
-                    className="hidden sm:inline font-mono text-[9px] font-bold tracking-wider uppercase leading-none px-1.5 py-0.5 rounded"
+                  <motion.span
+                    whileHover={{ scale: 1.02 }}
+                    whileTap={{ scale: 0.97 }}
+                    className="flex items-center gap-1.5 px-2 md:px-2.5 py-1.5 rounded-md text-sm transition-colors"
                     style={{
-                      color:      isPost ? 'var(--accent-post)' : 'var(--accent)',
-                      background: isPost
-                        ? 'color-mix(in srgb, var(--accent-post) 12%, transparent)'
-                        : 'color-mix(in srgb, var(--accent) 12%, transparent)',
-                      opacity: isActive ? 1 : 0.55,
+                      background: isActive ? (isPost ? 'color-mix(in srgb, var(--accent-post) 10%, transparent)' : 'color-mix(in srgb, var(--accent) 10%, transparent)') : 'transparent',
                     }}
                   >
-                    {r.method}
-                  </span>
+                    {/* Method badge */}
+                    <span
+                      className="font-mono text-[9px] font-bold tracking-wider uppercase leading-none px-1.5 py-0.5 rounded"
+                      style={{
+                        color:      isPost ? 'var(--accent-post)' : 'var(--accent)',
+                        background: isPost
+                          ? 'color-mix(in srgb, var(--accent-post) 12%, transparent)'
+                          : 'color-mix(in srgb, var(--accent) 12%, transparent)',
+                        opacity: isActive ? 1 : 0.55,
+                      }}
+                    >
+                      {r.method}
+                    </span>
 
-                  {/* Route path — monospace, intentional */}
-                  <span
-                    className="font-mono text-[11px] tracking-tight hidden md:inline"
-                    style={{
-                      color:   isActive ? 'var(--fg)' : 'var(--fg-2)',
-                      fontWeight: isActive ? 500 : 400,
-                    }}
-                  >
-                    {r.label}
-                  </span>
+                    {/* Route path */}
+                    <span
+                      className="font-mono text-[11px] tracking-tight"
+                      style={{
+                        color:   isActive ? 'var(--fg)' : 'var(--fg-2)',
+                        fontWeight: isActive ? 500 : 400,
+                      }}
+                    >
+                      {r.label}
+                    </span>
+                  </motion.span>
+                </Link>
+              );
+            })}
+          </nav>
 
-                  {/* Mobile: short label only */}
-                  <span
-                    className="font-mono text-[10px] tracking-tight md:hidden"
-                    style={{ color: isActive ? 'var(--fg)' : 'var(--fg-3)' }}
-                  >
-                    {r.label.replace('/', '')}
-                  </span>
-                </motion.span>
-              </Link>
-            );
-          })}
-        </nav>
+          {/* Right-edge fade — hints there's more to scroll (mobile only) */}
+          <div
+            className="md:hidden pointer-events-none absolute top-0 right-0 h-full w-10"
+            style={{ background: 'linear-gradient(to right, transparent, var(--bg))' }}
+          />
+
+          {/* Subtle nudging arrow — hints the menu scrolls (mobile only) */}
+          <motion.div
+            className="md:hidden pointer-events-none absolute top-1/2 right-0.5 -translate-y-1/2"
+            style={{ color: 'var(--fg-3)' }}
+            animate={{ x: [0, 3, 0], opacity: [0.35, 0.7, 0.35] }}
+            transition={{ duration: 1.6, repeat: Infinity, ease: 'easeInOut' }}
+          >
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+              <polyline points="9 18 15 12 9 6" />
+            </svg>
+          </motion.div>
+        </div>
 
         {/* Utilities */}
         <div className="flex items-center gap-2 flex-shrink-0">

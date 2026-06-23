@@ -25,6 +25,7 @@ const PHOTOS = [
  */
 function NameReveal() {
   const [hover, setHover] = useState(false);
+  const [tapOpen, setTapOpen] = useState(false);   // mobile: tap the name to reveal
   const [idx, setIdx]     = useState(0);
 
   const x  = useMotionValue(0);
@@ -32,28 +33,74 @@ function NameReveal() {
   const sx = useSpring(x, { stiffness: 260, damping: 28, mass: 0.5 });
   const sy = useSpring(y, { stiffness: 260, damping: 28, mass: 0.5 });
 
-  // Cycle through photos only while hovering.
+  // Cycle through photos while the reveal is active (hover on desktop, tap on mobile).
   useEffect(() => {
-    if (!hover) return;
+    if (!hover && !tapOpen) return;
     const id = setInterval(() => setIdx(i => (i + 1) % PHOTOS.length), 750);
     return () => clearInterval(id);
-  }, [hover]);
+  }, [hover, tapOpen]);
 
   const track = (e: React.MouseEvent) => { x.set(e.clientX); y.set(e.clientY); };
 
   return (
     <>
-      <h1
-        onMouseEnter={(e) => { track(e); setHover(true); }}
-        onMouseMove={track}
-        onMouseLeave={() => setHover(false)}
-        className="display-xl mb-5 inline-block"
-        style={{ color: 'var(--fg)' }}
-      >
-        Ömer Faruk<br />Yıldız.
-      </h1>
+      <div className="relative inline-block mb-5">
+        <h1
+          onMouseEnter={(e) => { track(e); setHover(true); }}
+          onMouseMove={track}
+          onMouseLeave={() => setHover(false)}
+          onClick={() => setTapOpen(o => !o)}
+          className="display-xl inline-block cursor-pointer select-none"
+          style={{ color: 'var(--fg)' }}
+        >
+          Ömer Faruk<br />
+          <span className="relative inline-block">
+            Yıldız.
+            {/* Mobile-only affordance: a soft pulsing dot hinting the name is tappable */}
+            <motion.span
+              className="md:hidden absolute -right-3 top-1 w-1.5 h-1.5 rounded-full"
+              style={{ background: 'var(--accent)' }}
+              animate={{ opacity: [0.3, 1, 0.3], scale: [1, 1.3, 1] }}
+              transition={{ duration: 2, repeat: Infinity, ease: 'easeInOut' }}
+              aria-hidden
+            />
+          </span>
+        </h1>
 
-      {/* Cursor-following reveal — fixed, never affects layout */}
+        {/* Mobile reveal — appears to the right of the name; tap the name again to hide */}
+        <AnimatePresence>
+          {tapOpen && (
+            <motion.div
+              key="mobile-card"
+              initial={{ opacity: 0, scale: 0.85, x: -8 }}
+              animate={{ opacity: 1, scale: 1, x: 0 }}
+              exit={{ opacity: 0, scale: 0.85, x: -8 }}
+              transition={{ duration: 0.28, ease: [0.23, 1, 0.32, 1] }}
+              className="md:hidden pointer-events-none absolute left-full top-1/2 -translate-y-1/2 ml-3 w-[110px] h-[110px]"
+              aria-hidden
+            >
+              <AnimatePresence>
+                <motion.img
+                  key={idx}
+                  src={PHOTOS[idx]}
+                  alt="Ömer Faruk Yıldız"
+                  initial={{ opacity: 0 }}
+                  animate={{ opacity: 1 }}
+                  exit={{ opacity: 0 }}
+                  transition={{ duration: 0.35 }}
+                  className="absolute inset-0 w-full h-full object-cover rounded-full"
+                  style={{
+                    border: '1px solid var(--border)',
+                    boxShadow: '0 16px 48px rgba(0,0,0,0.32)',
+                  }}
+                />
+              </AnimatePresence>
+            </motion.div>
+          )}
+        </AnimatePresence>
+      </div>
+
+      {/* Cursor-following reveal — desktop only, fixed, never affects layout */}
       <motion.div
         className="pointer-events-none fixed top-0 left-0 z-30 hidden md:block"
         style={{ x: sx, y: sy }}
@@ -91,6 +138,7 @@ function NameReveal() {
           </AnimatePresence>
         </div>
       </motion.div>
+
     </>
   );
 }
