@@ -68,7 +68,7 @@ function NameReveal() {
                 animate={{ opacity: 1, scale: 1 }}
                 exit={{ opacity: 0, scale: 0.85 }}
                 transition={{ duration: 0.28, ease: [0.23, 1, 0.32, 1] }}
-                className="relative w-[150px] h-[190px]"
+                className="relative w-[160px] h-[160px]"
               >
                 <AnimatePresence>
                   <motion.img
@@ -79,7 +79,7 @@ function NameReveal() {
                     animate={{ opacity: 1 }}
                     exit={{ opacity: 0 }}
                     transition={{ duration: 0.35 }}
-                    className="absolute inset-0 w-full h-full object-cover rounded-2xl"
+                    className="absolute inset-0 w-full h-full object-cover rounded-full"
                     style={{
                       border: '1px solid var(--border)',
                       boxShadow: '0 16px 48px rgba(0,0,0,0.32)',
