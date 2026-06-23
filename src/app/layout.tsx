@@ -18,14 +18,35 @@ const jetbrainsMono = JetBrains_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "Ömer Faruk Yıldız — Backend Developer",
+  metadataBase: new URL("https://omerfarukyildiz.tech"),
+  title: {
+    default: "Ömer Faruk Yıldız | Backend Developer Portfolio",
+    template: "%s | Ömer Faruk Yıldız",
+  },
   description:
-    "Backend architect. I design systems, automate processes, and build reliable infrastructure. Python · C# · .NET · RPA.",
+    "Python, C# / .NET ve RPA teknolojileriyle geliştirilmiş backend servisleri ve süreç otomasyonu projeleri. Ömer Faruk Yıldız — Barsan Global Lojistik'te yazılım uzmanı.",
+  keywords: [
+    "Ömer Faruk Yıldız", "backend developer", "yazılım uzmanı", "Python",
+    "C#", ".NET", "RPA", "Selenium", "SAP RFC", "otomasyon", "REST API", "portföy",
+  ],
+  authors: [{ name: "Ömer Faruk Yıldız" }],
+  creator: "Ömer Faruk Yıldız",
+  alternates: { canonical: "/" },
+  robots: { index: true, follow: true },
   openGraph: {
-    title: "Ömer Faruk Yıldız — Backend Developer",
+    title: "Ömer Faruk Yıldız | Backend Developer Portfolio",
     description:
-      "Backend architect. I design systems, automate processes, and build reliable infrastructure.",
+      "Python, C# / .NET ve RPA ile backend servisleri ve süreç otomasyonu. Projeler, deneyim ve teknik notlar.",
+    url: "https://omerfarukyildiz.tech",
     type: "website",
+    locale: "tr_TR",
+    siteName: "Ömer Faruk Yıldız",
+  },
+  twitter: {
+    card: "summary",
+    title: "Ömer Faruk Yıldız | Backend Developer Portfolio",
+    description:
+      "Python, C# / .NET ve RPA ile backend servisleri ve süreç otomasyonu projeleri.",
   },
 };
 
