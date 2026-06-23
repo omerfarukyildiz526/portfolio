@@ -32,7 +32,7 @@ export default function ProjectsPage() {
             initial={{ opacity: 0, x: 30 }}
             animate={{ opacity: 1, x: 0 }}
             transition={{ delay: 0.3, duration: 0.75, ease: [0.23, 1, 0.32, 1] }}
-            className="terminal rounded-xl p-5"
+            className="terminal rounded-md p-5"
             style={{ fontFamily: 'var(--font-jetbrains, monospace)' }}
           >
             <div className="text-[10px] mb-3 uppercase tracking-widest" style={{ color: 'var(--dim-soft)' }}>// REPO İSTATİSTİKLERİ</div>

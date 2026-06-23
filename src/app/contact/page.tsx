@@ -32,7 +32,7 @@ export default function ContactPage() {
             initial={{ opacity: 0, x: 30 }}
             animate={{ opacity: 1, x: 0 }}
             transition={{ delay: 0.3, duration: 0.7 }}
-            className="terminal rounded-xl p-5"
+            className="terminal rounded-md p-5"
             style={{ fontFamily: 'var(--font-jetbrains, monospace)' }}
           >
             <div className="text-[10px] mb-3 uppercase tracking-widest" style={{ color: 'var(--dim)' }}>// REQUEST BODY</div>

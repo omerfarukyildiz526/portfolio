@@ -18,9 +18,9 @@ function EndpointCard({ method, path, desc, href, delay = 0 }: {
     >
       <Link href={href}>
         <motion.div
-          whileHover={{ scale: 1.015, borderColor: mc + '45', y: -4 }}
-          whileTap={{ scale: 0.985 }}
-          className="group flex items-center gap-5 p-5 rounded-xl border transition-all duration-250 relative overflow-hidden card"
+          whileHover={{ borderColor: mc + '55' }}
+          whileTap={{ scale: 0.99 }}
+          className="group flex items-center gap-5 p-5 rounded-md border transition-all duration-200 relative overflow-hidden card"
           style={{ fontFamily: 'var(--font-jetbrains, monospace)' }}
         >
           <div className="absolute inset-0 opacity-0 group-hover:opacity-5 transition-opacity duration-300"
@@ -425,7 +425,7 @@ function InteractiveTerminal() {
 
   return (
     <div
-      className="terminal rounded-2xl overflow-hidden flex flex-col h-full"
+      className="terminal rounded-md overflow-hidden flex flex-col h-full"
       style={{ cursor: 'text' }}
       onClick={() => inputRef.current?.focus()}
     >
@@ -622,7 +622,7 @@ export default function HeroPage() {
 
             <div className="pt-1 text-center sm:text-left">
               <h1 className="text-xl sm:text-2xl font-black uppercase tracking-tight leading-tight text-white heading-primary">
-                Ömer Faruk <span className="accent-orange-glow">Yıldız</span>
+                Ömer Faruk <span className="text-white">Yıldız</span>
               </h1>
               <p className="text-[10px] sm:text-[11px] font-mono text-white/30 mt-0.5 tracking-wide text-premium">
                 Yazılım Uzmanı · Barsan Global Lojistik
@@ -642,7 +642,7 @@ export default function HeroPage() {
             animate={{ scaleX: 1 }}
             transition={{ delay: 0.45, duration: 0.6, ease: [0.23, 1, 0.32, 1] }}
             className="h-[1px] origin-left rounded-full"
-            style={{ background: 'linear-gradient(90deg, #4488ff, rgba(68,136,255,0.06))', boxShadow: '0 0 8px #4488ff' }}
+            style={{ background: 'linear-gradient(90deg, #4488ff, rgba(68,136,255,0.08))' }}
           />
 
           {/* Subtitle */}

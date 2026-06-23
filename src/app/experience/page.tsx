@@ -267,14 +267,13 @@ export default function ExperiencePage() {
                       style={{
                         borderColor: exp.color,
                         background: exp.current ? exp.color : 'transparent',
-                        boxShadow: exp.current ? `0 0 12px ${exp.color}` : 'none',
                       }}
                     />
                   </div>
 
                   {/* Kart */}
                   <div className="flex-1 pb-2">
-                    <div className="card rounded-xl p-5 md:p-6">
+                    <div className="card rounded-md p-5 md:p-6">
                       {/* Üst bilgi */}
                       <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-2 mb-3">
                         <div>
@@ -336,7 +335,7 @@ export default function ExperiencePage() {
                 initial={{ opacity: 0, y: 16 }}
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ delay: i * 0.1 + 0.3, duration: 0.5, ease: [0.23, 1, 0.32, 1] }}
-                className="card rounded-xl p-5 md:p-6 relative overflow-hidden"
+                className="card rounded-md p-5 md:p-6 relative overflow-hidden"
               >
                 <div className="absolute top-0 left-0 w-full h-[2px]" style={{ background: edu.color }} />
 
@@ -407,7 +406,7 @@ export default function ExperiencePage() {
                 initial={{ opacity: 0, y: 16 }}
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ delay: i * 0.1 + 0.3, duration: 0.5, ease: [0.23, 1, 0.32, 1] }}
-                className="card rounded-xl p-5 relative overflow-hidden"
+                className="card rounded-md p-5 relative overflow-hidden"
               >
                 <div className="absolute top-0 left-0 w-full h-[2px]" style={{ background: ref.color }} />
                 <div className="flex items-start justify-between gap-3">
@@ -453,7 +452,7 @@ export default function ExperiencePage() {
                 initial={{ opacity: 0, y: 16 }}
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ delay: i * 0.08 + 0.3, duration: 0.5, ease: [0.23, 1, 0.32, 1] }}
-                className="card rounded-xl p-5 relative overflow-hidden group"
+                className="card rounded-md p-5 relative overflow-hidden group"
               >
                 <div className="absolute top-0 left-0 w-full h-[2px]" style={{ background: cert.color }} />
                 <div className="flex items-start justify-between">

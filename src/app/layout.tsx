@@ -31,8 +31,8 @@ export const metadata: Metadata = {
 
 export default function RootLayout({ children }: Readonly<{ children: React.ReactNode }>) {
   return (
-    <html lang="tr" className={`${syne.variable} ${jetbrainsMono.variable} ${poppins.variable} h-full`}>
-      <body className="min-h-full scanlines bg-black text-white">
+    <html lang="tr" suppressHydrationWarning className={`${syne.variable} ${jetbrainsMono.variable} ${poppins.variable} h-full`}>
+      <body className="min-h-full scanlines text-white">
         <ClientShell>{children}</ClientShell>
       </body>
     </html>

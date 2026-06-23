@@ -5,6 +5,7 @@ import { usePathname } from 'next/navigation';
 import { motion } from 'framer-motion';
 import { useTheme } from 'next-themes';
 import { useEffect, useState } from 'react';
+import { useLang } from '@/lib/i18n';
 
 const ROUTES = [
   { path: '/',            method: 'GET',  label: '/home' },
@@ -23,6 +24,7 @@ const METHOD_COLOR: Record<string, string> = {
 export default function NavBar() {
   const pathname = usePathname();
   const { theme, setTheme } = useTheme();
+  const { lang, setLang } = useLang();
   const [mounted, setMounted] = useState(false);
   useEffect(() => setMounted(true), []);
 
@@ -33,7 +35,7 @@ export default function NavBar() {
       initial={{ y: -70, opacity: 0 }}
       animate={{ y: 0, opacity: 1 }}
       transition={{ delay: 0.4, duration: 0.8, ease: [0.23, 1, 0.32, 1] }}
-      className="fixed top-3 md:top-5 left-1/2 -translate-x-1/2 z-50 flex items-center gap-0.5 md:gap-1 px-1.5 md:px-2 py-1.5 md:py-2 rounded-full border border-white/10 backdrop-blur-xl"
+      className="fixed top-3 md:top-5 left-1/2 -translate-x-1/2 z-50 flex items-center gap-0.5 md:gap-1 px-1.5 md:px-2 py-1.5 md:py-2 rounded-sm border border-white/10 backdrop-blur-xl"
       style={{ background: 'var(--bg-card)', fontFamily: 'var(--font-jetbrains, monospace)' }}
     >
       {ROUTES.map((r) => {
@@ -44,7 +46,7 @@ export default function NavBar() {
             <motion.div
               whileHover={{ scale: 1.03 }}
               whileTap={{ scale: 0.97 }}
-              className="flex items-center gap-1 md:gap-1.5 px-2.5 md:px-4 py-1.5 md:py-2 rounded-full text-[9px] md:text-[10px] font-bold tracking-wide transition-all duration-200"
+              className="flex items-center gap-1 md:gap-1.5 px-2.5 md:px-4 py-1.5 md:py-2 rounded-sm text-[9px] md:text-[10px] font-bold tracking-wide transition-all duration-200"
               style={{
                 background: isActive ? mc + '18' : 'transparent',
                 border: isActive ? `1px solid ${mc}40` : '1px solid transparent',
@@ -67,10 +69,27 @@ export default function NavBar() {
 
       <span className="w-px h-4 ml-1" style={{ background: 'var(--border)' }} />
 
+      {/* Dil toggle */}
+      <div className="flex items-center ml-1 rounded-sm overflow-hidden border" style={{ borderColor: 'var(--border)' }}>
+        {(['tr', 'en'] as const).map((l) => (
+          <button
+            key={l}
+            onClick={() => setLang(l)}
+            className="px-2 py-1 text-[9px] font-black uppercase tracking-widest transition-all duration-150"
+            style={{
+              background: lang === l ? 'var(--accent)' : 'transparent',
+              color:      lang === l ? '#fff' : 'var(--dim)',
+            }}
+          >
+            {l}
+          </button>
+        ))}
+      </div>
+
       {/* Tema toggle */}
       <button
         onClick={() => setTheme(isLight ? 'dark' : 'light')}
-        className="w-7 h-7 rounded-full flex items-center justify-center transition-all duration-200 ml-1"
+        className="w-7 h-7 rounded-sm flex items-center justify-center transition-all duration-200 ml-1"
         style={{
           background: 'var(--surface)',
           border: '1px solid var(--border)',

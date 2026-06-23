@@ -21,12 +21,12 @@ interface Smoke {
 }
 
 const RESPONSIBILITIES = [
-  { icon: '⚙', title: 'REST API Tasarımı',       tags: ['GET', 'POST', 'PUT', 'DELETE'] },
-  { icon: '🗄', title: 'Veritabanı Mimarisi',     tags: ['SQL Server', 'PostgreSQL', 'EF Core'] },
-  { icon: '🤖', title: 'Süreç Otomasyonu',        tags: ['Selenium', 'Blue Prism', 'Power Automate'] },
-  { icon: '🔗', title: 'Sistem Entegrasyonu',     tags: ['SAP RFC', 'SOAP', 'BAPI'] },
-  { icon: '📊', title: 'Veri İşleme',             tags: ['Pandas', 'NumPy', 'Excel'] },
-  { icon: '🐳', title: 'DevOps & Deployment',     tags: ['Docker', 'Git', 'CI/CD'] },
+  { icon: 'API', title: 'REST API Tasarımı',       tags: ['GET', 'POST', 'PUT', 'DELETE'] },
+  { icon: 'DB',  title: 'Veritabanı Mimarisi',     tags: ['SQL Server', 'PostgreSQL', 'EF Core'] },
+  { icon: 'RPA', title: 'Süreç Otomasyonu',        tags: ['Selenium', 'Blue Prism', 'Power Automate'] },
+  { icon: 'INT', title: 'Sistem Entegrasyonu',     tags: ['SAP RFC', 'SOAP', 'BAPI'] },
+  { icon: 'ETL', title: 'Veri İşleme',             tags: ['Pandas', 'NumPy', 'Excel'] },
+  { icon: 'OPS', title: 'DevOps & Deployment',     tags: ['Docker', 'Git', 'CI/CD'] },
 ];
 
 function TechCard({
@@ -47,10 +47,9 @@ function TechCard({
     >
       <div
         onClick={() => setOpen(!open)}
-        className="card rounded-xl p-3 md:p-6 cursor-pointer group relative flex flex-col"
+        className="card rounded-md p-3 md:p-6 cursor-pointer group relative flex flex-col"
       >
-        <div className="absolute top-0 left-0 w-full h-[2px] bg-[#4488ff] opacity-40 group-hover:opacity-80 transition-opacity"
-             style={{ boxShadow: '0 0 10px #4488ff' }} />
+        <div className="absolute top-0 left-0 w-full h-[2px] bg-[#4488ff] opacity-30 group-hover:opacity-60 transition-opacity" />
 
         <div className="flex items-center justify-between mb-2 md:mb-3">
           <div>
@@ -220,7 +219,7 @@ function InteractiveTerminal() {
 
   return (
     <div
-      className="terminal rounded-xl overflow-hidden"
+      className="terminal rounded-md overflow-hidden"
       style={{ fontFamily: 'var(--font-jetbrains, monospace)' }}
       onClick={() => inputRef.current?.focus()}
     >
@@ -509,9 +508,9 @@ export default function SkillsPage() {
               {[...RESPONSIBILITIES, ...RESPONSIBILITIES].map((r, i) => (
                 <div
                   key={i}
-                  className="card rounded-xl p-4 flex-shrink-0 w-48 sm:w-56 group hover:border-[#4488ff]/25 transition-colors"
+                  className="card rounded-md p-4 flex-shrink-0 w-48 sm:w-56 group hover:border-[#4488ff]/25 transition-colors"
                 >
-                  <div className="text-xl mb-2">{r.icon}</div>
+                  <div className="text-[9px] font-black font-mono mb-2 tracking-widest" style={{ color: 'var(--accent)' }}>{r.icon}</div>
                   <h3 className="font-black uppercase tracking-tight text-white/80 text-xs mb-2">{r.title}</h3>
                   <div className="flex flex-wrap gap-1">
                     {r.tags.map((tag) => (
