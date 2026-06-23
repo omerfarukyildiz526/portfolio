@@ -1,12 +1,12 @@
 import type { Metadata } from "next";
-import { Syne, JetBrains_Mono, Poppins } from "next/font/google";
+import { Inter, JetBrains_Mono } from "next/font/google";
 import "./globals.css";
 import ClientShell from "@/components/ClientShell";
 
-const syne = Syne({
-  variable: "--font-syne",
+const inter = Inter({
+  variable: "--font-inter",
   subsets: ["latin"],
-  weight: ["400", "600", "700", "800"],
+  weight: ["300", "400", "500", "600", "700"],
   display: "swap",
 });
 
@@ -17,22 +17,28 @@ const jetbrainsMono = JetBrains_Mono({
   display: "swap",
 });
 
-const poppins = Poppins({
-  variable: "--font-space",
-  subsets: ["latin"],
-  weight: ["400", "500", "600", "700", "800"],
-  display: "swap",
-});
-
 export const metadata: Metadata = {
   title: "Ömer Faruk Yıldız — Backend Developer",
-  description: "Backend mimarilerini tasarlar, süreçleri otonomlaştırırım. Mantık her şeyin üstündedir.",
+  description:
+    "Backend architect. I design systems, automate processes, and build reliable infrastructure. Python · C# · .NET · RPA.",
+  openGraph: {
+    title: "Ömer Faruk Yıldız — Backend Developer",
+    description:
+      "Backend architect. I design systems, automate processes, and build reliable infrastructure.",
+    type: "website",
+  },
 };
 
-export default function RootLayout({ children }: Readonly<{ children: React.ReactNode }>) {
+export default function RootLayout({
+  children,
+}: Readonly<{ children: React.ReactNode }>) {
   return (
-    <html lang="tr" suppressHydrationWarning className={`${syne.variable} ${jetbrainsMono.variable} ${poppins.variable} h-full`}>
-      <body className="min-h-full scanlines text-white">
+    <html
+      lang="tr"
+      suppressHydrationWarning
+      className={`${inter.variable} ${jetbrainsMono.variable}`}
+    >
+      <body>
         <ClientShell>{children}</ClientShell>
       </body>
     </html>

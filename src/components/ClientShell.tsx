@@ -6,10 +6,10 @@ import NavBar from './NavBar';
 
 export default function ClientShell({ children }: { children: React.ReactNode }) {
   return (
-    <ThemeProvider attribute="data-theme" defaultTheme="dark" enableSystem={false}>
+    <ThemeProvider attribute="data-theme" defaultTheme="dark" enableSystem>
       <LangProvider>
         <NavBar />
-        <div className="relative z-10">{children}</div>
+        <div>{children}</div>
       </LangProvider>
     </ThemeProvider>
   );

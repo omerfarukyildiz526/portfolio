@@ -183,7 +183,7 @@ export default function GithubViewer({ repoPath }: { repoPath: string }) {
 
     // Paragraphs
     p: ({ children }) => (
-      <p style={{ marginTop: '0', marginBottom: '1em', lineHeight: 1.7, color: 'var(--dim)' }}>{children}</p>
+      <p style={{ marginTop: '0', marginBottom: '1em', lineHeight: 1.7, color: 'var(--fg-3)' }}>{children}</p>
     ),
 
     // Links
@@ -239,19 +239,19 @@ export default function GithubViewer({ repoPath }: { repoPath: string }) {
 
     // Blockquote
     blockquote: ({ children }) => (
-      <blockquote style={{ borderLeft: '4px solid var(--border)', paddingLeft: '1em', margin: '0 0 1em', color: 'var(--dim)' }}>
+      <blockquote style={{ borderLeft: '4px solid var(--border)', paddingLeft: '1em', margin: '0 0 1em', color: 'var(--fg-3)' }}>
         {children}
       </blockquote>
     ),
 
     // Unordered list
     ul: ({ children }) => (
-      <ul style={{ paddingLeft: '2em', marginBottom: '1em', listStyleType: 'disc', color: 'var(--dim)' }}>{children}</ul>
+      <ul style={{ paddingLeft: '2em', marginBottom: '1em', listStyleType: 'disc', color: 'var(--fg-3)' }}>{children}</ul>
     ),
 
     // Ordered list
     ol: ({ children }) => (
-      <ol style={{ paddingLeft: '2em', marginBottom: '1em', listStyleType: 'decimal', color: 'var(--dim)' }}>{children}</ol>
+      <ol style={{ paddingLeft: '2em', marginBottom: '1em', listStyleType: 'decimal', color: 'var(--fg-3)' }}>{children}</ol>
     ),
 
     li: ({ children, ...props }) => {
@@ -276,14 +276,14 @@ export default function GithubViewer({ repoPath }: { repoPath: string }) {
         <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '14px' }}>{children}</table>
       </div>
     ),
-    thead: ({ children }) => <thead style={{ background: 'var(--bg-light)' }}>{children}</thead>,
+    thead: ({ children }) => <thead style={{ background: 'var(--bg-raised)' }}>{children}</thead>,
     th: ({ children }) => (
       <th style={{ padding: '8px 13px', border: '1px solid var(--border)', fontWeight: 600, textAlign: 'left', color: 'var(--fg)' }}>
         {children}
       </th>
     ),
     td: ({ children }) => (
-      <td style={{ padding: '8px 13px', border: '1px solid var(--border)', color: 'var(--dim)' }}>
+      <td style={{ padding: '8px 13px', border: '1px solid var(--border)', color: 'var(--fg-3)' }}>
         {children}
       </td>
     ),
@@ -328,11 +328,11 @@ export default function GithubViewer({ repoPath }: { repoPath: string }) {
     <div style={{ fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif', color: 'var(--fg)', fontSize: '14px', lineHeight: 1.6 }}>
       {/* GitHub-style README header */}
       <div className="flex items-center gap-2 mb-4 pb-3" style={{ borderBottom: '1px solid var(--border)' }}>
-        <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" fill="currentColor" viewBox="0 0 16 16" style={{ color: 'var(--dim)', flexShrink: 0 }}>
+        <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" fill="currentColor" viewBox="0 0 16 16" style={{ color: 'var(--fg-3)', flexShrink: 0 }}>
           <path d="M14.414 0 14 .586V4h-2V2H4v2H2V.586L1.586 0H0v2h.586L2 .586V4H0v2h2v6H0v2h2v2h2v-2h8v2h2v-2h2v-2h-2V6h2V4h-2V.586L15.414 0zM4 4h8v2H4zm0 4h8v4H4z"/>
         </svg>
         <span className="text-[12px] font-semibold" style={{ color: 'var(--fg)' }}>README.md</span>
-        <span className="text-[10px] font-mono ml-auto" style={{ color: 'var(--dim)' }}>
+        <span className="text-[10px] font-mono ml-auto" style={{ color: 'var(--fg-3)' }}>
           {repoPath} / {branch}
         </span>
       </div>
