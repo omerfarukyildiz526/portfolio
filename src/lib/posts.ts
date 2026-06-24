@@ -1,8 +1,9 @@
 export interface ContentBlock {
-  type: 'p' | 'h2' | 'h3' | 'code' | 'list' | 'note';
-  text?: string;
-  items?: string[];
-  lang?: string;
+  type: 'p' | 'h2' | 'h3' | 'code' | 'list' | 'note' | 'quote' | 'image' | 'divider';
+  text?: string;       // p, h2, h3, note, code, quote, image(başlık/caption)
+  items?: string[];    // list
+  lang?: string;       // code
+  url?: string;        // image
 }
 
 export interface Post {
@@ -15,9 +16,14 @@ export interface Post {
   date: string;
   readTime: number;
   content: ContentBlock[];
+  published?: boolean; // tanımsız = yayında (eski yazılarla uyum için)
+  cover?: string;      // kapak görseli URL'si (opsiyonel)
 }
 
-export const POSTS: Post[] = [
+// Başlangıç içeriği. Veritabanı boşsa bu yazılar otomatik olarak MongoDB'ye
+// aktarılır (bkz. src/lib/posts-db.ts → getAllPosts). Sonrasında tek doğruluk
+// kaynağı veritabanıdır; bu dizi yalnızca ilk tohumlama içindir.
+export const SEED_POSTS: Post[] = [
   {
     slug: 'python-selenium-otomasyon',
     title: 'Python + Selenium ile Web Otomasyonu',
@@ -392,7 +398,3 @@ Koşul: approval.outcome == "Approve"
     ],
   },
 ];
-
-export function getPost(slug: string): Post | undefined {
-  return POSTS.find((p) => p.slug === slug);
-}

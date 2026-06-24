@@ -1,10 +1,11 @@
 'use client';
 
-import { use } from 'react';
+import { use, useEffect, useState } from 'react';
 import { notFound } from 'next/navigation';
 import Link from 'next/link';
 import { motion } from 'framer-motion';
-import { getPost, ContentBlock } from '@/lib/posts';
+import { Post, ContentBlock } from '@/lib/posts';
+import { MD } from '@/components/Markdown';
 
 function Block({ block, index }: { block: ContentBlock; index: number }) {
   const delay = 0.3 + index * 0.04;
@@ -22,7 +23,7 @@ function Block({ block, index }: { block: ContentBlock; index: number }) {
   switch (block.type) {
     case 'h2': return wrap(<h2 className="display-md mt-10 mb-4" style={{ color: 'var(--fg)' }}>{block.text}</h2>);
     case 'h3': return wrap(<h3 className="font-semibold text-base mt-7 mb-3" style={{ color: 'var(--fg)' }}>{block.text}</h3>);
-    case 'p':  return wrap(<p className="body-md mb-4" style={{ color: 'var(--fg-2)' }}>{block.text}</p>);
+    case 'p':  return wrap(<p className="body-md mb-4" style={{ color: 'var(--fg-2)' }}><MD>{block.text ?? ''}</MD></p>);
     case 'code': return wrap(
       <div className="code-block my-5">
         <div className="px-4 py-2.5" style={{ borderBottom: '1px solid var(--border)' }}>
@@ -46,8 +47,21 @@ function Block({ block, index }: { block: ContentBlock; index: number }) {
       <div className="my-5 p-5 rounded-xl body-md"
         style={{ background: 'color-mix(in srgb, var(--accent) 5%, transparent)', border: '1px solid color-mix(in srgb, var(--accent) 15%, transparent)', borderLeft: '3px solid var(--accent)', color: 'var(--fg-2)' }}>
         <span className="font-mono text-[10px] font-bold uppercase tracking-wider block mb-2" style={{ color: 'var(--accent)' }}>Note</span>
-        {block.text}
+        <MD>{block.text ?? ''}</MD>
       </div>
+    );
+    case 'quote': return wrap(
+      <blockquote className="my-6 pl-5 body-lg italic" style={{ borderLeft: '3px solid var(--accent)', color: 'var(--fg)' }}><MD>{block.text ?? ''}</MD></blockquote>
+    );
+    case 'image': return wrap(
+      <figure className="my-6">
+        {/* eslint-disable-next-line @next/next/no-img-element */}
+        <img src={block.url} alt={block.text || ''} className="w-full rounded-xl" style={{ border: '1px solid var(--border)' }} />
+        {block.text && <figcaption className="body-sm text-center mt-2.5" style={{ color: 'var(--fg-3)' }}>{block.text}</figcaption>}
+      </figure>
+    );
+    case 'divider': return wrap(
+      <hr className="my-8" style={{ border: 0, borderTop: '1px solid var(--border)' }} />
     );
     default: return null;
   }
@@ -55,8 +69,21 @@ function Block({ block, index }: { block: ContentBlock; index: number }) {
 
 export default function FeedPostPage({ params }: { params: Promise<{ slug: string }> }) {
   const { slug } = use(params);
-  const post = getPost(slug);
-  if (!post) notFound();
+  const [post, setPost] = useState<Post | null | undefined>(undefined);
+
+  useEffect(() => {
+    fetch(`/api/posts/${slug}`, { cache: 'no-store' })
+      .then(r => (r.ok ? r.json() : null))
+      .then(d => setPost(d?.post ?? null))
+      .catch(() => setPost(null));
+  }, [slug]);
+
+  if (post === undefined) {
+    return <main className="min-h-screen flex items-center justify-center" style={{ color: 'var(--fg-3)' }}>
+      <span className="font-mono text-sm">yükleniyor…</span>
+    </main>;
+  }
+  if (post === null) notFound();
 
   return (
     <main className="min-h-screen pt-24 pb-28 px-5 md:px-8">
@@ -78,6 +105,11 @@ export default function FeedPostPage({ params }: { params: Promise<{ slug: strin
 
         <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }}
           transition={{ delay: 0.08, duration: 0.6, ease: [0.23, 1, 0.32, 1] }} className="mb-12">
+          {post.cover && (
+            /* eslint-disable-next-line @next/next/no-img-element */
+            <img src={post.cover} alt="" className="w-full rounded-2xl mb-7"
+              style={{ border: '1px solid var(--border)', maxHeight: 360, objectFit: 'cover' }} />
+          )}
           <div className="w-14 h-14 rounded-2xl mb-7 flex items-center justify-center text-2xl"
             style={{ background: `linear-gradient(135deg, ${post.gradient[0]}, ${post.gradient[1]})` }}>
             {post.symbol}

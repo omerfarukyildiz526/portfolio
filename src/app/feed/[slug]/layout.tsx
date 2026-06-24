@@ -1,5 +1,5 @@
 import type { Metadata } from "next";
-import { getPost } from "@/lib/posts";
+import { getPostBySlug } from "@/lib/posts-db";
 
 export async function generateMetadata({
   params,
@@ -7,7 +7,7 @@ export async function generateMetadata({
   params: Promise<{ slug: string }>;
 }): Promise<Metadata> {
   const { slug } = await params;
-  const post = getPost(slug);
+  const post = await getPostBySlug(slug);
 
   if (!post) {
     return { title: "Yazı bulunamadı" };

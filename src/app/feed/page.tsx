@@ -1,9 +1,11 @@
 'use client';
 
 import { useState, useCallback, useRef, useEffect } from 'react';
+import Link from 'next/link';
 import { motion, AnimatePresence } from 'framer-motion';
-import { POSTS, Post, ContentBlock } from '@/lib/posts';
+import { Post, ContentBlock } from '@/lib/posts';
 import { useLang } from '@/lib/i18n';
+import { MD } from '@/components/Markdown';
 
 function CodeBlock({ block, index }: { block: ContentBlock; index: number }) {
   const [copied, setCopied] = useState(false);
@@ -50,7 +52,7 @@ function Block({ block, index }: { block: ContentBlock; index: number }) {
     );
     case 'p': return (
       <motion.p initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={{ delay, duration: 0.4 }}
-        className="body-md mb-4" style={{ color: 'var(--fg-2)' }}>{block.text}</motion.p>
+        className="body-md mb-4" style={{ color: 'var(--fg-2)' }}><MD>{block.text ?? ''}</MD></motion.p>
     );
     case 'list': return (
       <motion.ul initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={{ delay, duration: 0.4 }}
@@ -67,8 +69,25 @@ function Block({ block, index }: { block: ContentBlock; index: number }) {
         className="my-5 p-5 rounded-xl body-md"
         style={{ background: 'color-mix(in srgb, var(--accent) 5%, transparent)', border: '1px solid color-mix(in srgb, var(--accent) 15%, transparent)', borderLeft: '3px solid var(--accent)', color: 'var(--fg-2)' }}>
         <span className="font-mono text-[10px] font-bold uppercase tracking-wider block mb-2" style={{ color: 'var(--accent)' }}>Note</span>
-        {block.text}
+        <MD>{block.text ?? ''}</MD>
       </motion.div>
+    );
+    case 'quote': return (
+      <motion.blockquote initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={{ delay, duration: 0.4 }}
+        className="my-6 pl-5 body-lg italic" style={{ borderLeft: '3px solid var(--accent)', color: 'var(--fg)' }}>
+        <MD>{block.text ?? ''}</MD>
+      </motion.blockquote>
+    );
+    case 'image': return (
+      <motion.figure initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={{ delay, duration: 0.4 }} className="my-6">
+        {/* eslint-disable-next-line @next/next/no-img-element */}
+        <img src={block.url} alt={block.text || ''} className="w-full rounded-xl" style={{ border: '1px solid var(--border)' }} />
+        {block.text && <figcaption className="body-sm text-center mt-2.5" style={{ color: 'var(--fg-3)' }}>{block.text}</figcaption>}
+      </motion.figure>
+    );
+    case 'divider': return (
+      <motion.hr initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay, duration: 0.4 }}
+        className="my-8" style={{ border: 0, borderTop: '1px solid var(--border)' }} />
     );
     default: return null;
   }
@@ -82,14 +101,22 @@ const slideVariants = {
 
 export default function FeedPage() {
   const { lang } = useLang();
+  const [posts,     setPosts]     = useState<Post[]>([]);
   const [selected,  setSelected]  = useState<Post | null>(null);
   const [progress,  setProgress]  = useState(0);
   const [direction, setDirection] = useState(0);
   const scrollRef = useRef<HTMLDivElement>(null);
 
-  const currentIndex = selected ? POSTS.findIndex(p => p.slug === selected.slug) : -1;
+  useEffect(() => {
+    fetch('/api/posts', { cache: 'no-store' })
+      .then(r => r.json())
+      .then(d => setPosts(d.posts ?? []))
+      .catch(() => setPosts([]));
+  }, []);
+
+  const currentIndex = selected ? posts.findIndex(p => p.slug === selected.slug) : -1;
   const hasPrev = currentIndex > 0;
-  const hasNext = currentIndex < POSTS.length - 1;
+  const hasNext = currentIndex < posts.length - 1;
 
   const onScroll = useCallback(() => {
     const el = scrollRef.current;
@@ -113,7 +140,27 @@ export default function FeedPage() {
 
   return (
     <main className="min-h-screen pt-24 pb-32 px-5 md:px-8">
-      <div className="max-w-3xl mx-auto">
+      <div className="max-w-3xl mx-auto relative">
+
+        <motion.div
+          initial={{ opacity: 0, y: -8 }} animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.2, duration: 0.5, ease: [0.23, 1, 0.32, 1] }}
+          className="absolute top-0 right-0 z-10"
+        >
+          <Link href="/admin"
+            className="group flex items-center gap-2 font-mono text-[11px] px-3.5 py-2 rounded-full border transition-all duration-200"
+            style={{ background: 'var(--bg-card)', borderColor: 'var(--border)', color: 'var(--fg-2)' }}
+            onMouseEnter={e => { e.currentTarget.style.borderColor = 'var(--accent)'; e.currentTarget.style.color = 'var(--accent)'; }}
+            onMouseLeave={e => { e.currentTarget.style.borderColor = 'var(--border)'; e.currentTarget.style.color = 'var(--fg-2)'; }}
+          >
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"
+              className="transition-transform duration-200 group-hover:-translate-y-px">
+              <rect width="18" height="11" x="3" y="11" rx="2" ry="2"/>
+              <path d="M7 11V7a5 5 0 0 1 10 0v4"/>
+            </svg>
+            Giriş
+          </Link>
+        </motion.div>
 
         <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.6, ease: [0.23, 1, 0.32, 1] }} className="mb-16">
@@ -131,7 +178,7 @@ export default function FeedPage() {
         </motion.div>
 
         <div className="space-y-3">
-          {POSTS.map((post, i) => (
+          {posts.map((post, i) => (
             <motion.button key={post.slug}
               initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }}
               transition={{ delay: i * 0.05, duration: 0.45, ease: [0.23, 1, 0.32, 1] }}
@@ -192,7 +239,7 @@ export default function FeedPage() {
                     /feed
                   </button>
                   <div className="flex items-center gap-3">
-                    <span className="font-mono text-[10px]" style={{ color: 'var(--fg-3)' }}>{currentIndex + 1} / {POSTS.length}</span>
+                    <span className="font-mono text-[10px]" style={{ color: 'var(--fg-3)' }}>{currentIndex + 1} / {posts.length}</span>
                     <button onClick={() => setSelected(null)}
                       className="w-8 h-8 rounded-full flex items-center justify-center transition-colors"
                       style={{ background: 'var(--surface)', color: 'var(--fg-3)', border: '1px solid var(--border)' }}
@@ -209,6 +256,11 @@ export default function FeedPage() {
                     initial="enter" animate="center" exit="exit"
                     transition={{ duration: 0.28, ease: [0.23, 1, 0.32, 1] }}>
                     <div className="mb-12">
+                      {selected.cover && (
+                        /* eslint-disable-next-line @next/next/no-img-element */
+                        <img src={selected.cover} alt="" className="w-full rounded-2xl mb-7"
+                          style={{ border: '1px solid var(--border)', maxHeight: 360, objectFit: 'cover' }} />
+                      )}
                       <div className="w-14 h-14 rounded-2xl mb-7 flex items-center justify-center text-2xl"
                         style={{ background: `linear-gradient(135deg, ${selected.gradient[0]}, ${selected.gradient[1]})` }}>
                         {selected.symbol}
@@ -238,7 +290,7 @@ export default function FeedPage() {
 
                 <div className="mt-16 pt-8 grid grid-cols-2 gap-4" style={{ borderTop: '1px solid var(--border)' }}>
                   {hasPrev ? (
-                    <button onClick={() => goTo(POSTS[currentIndex - 1], -1)}
+                    <button onClick={() => goTo(posts[currentIndex - 1], -1)}
                       className="group flex flex-col gap-1.5 p-4 rounded-xl border text-left transition-all duration-200"
                       style={{ background: 'var(--bg-card)', borderColor: 'var(--border)' }}
                       onMouseEnter={e => (e.currentTarget.style.borderColor = 'var(--border-hover)')}
@@ -247,11 +299,11 @@ export default function FeedPage() {
                         <svg width="9" height="9" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><path d="M19 12H5M12 5l-7 7 7 7"/></svg>
                         Previous
                       </span>
-                      <span className="body-sm font-medium line-clamp-2" style={{ color: 'var(--fg-2)' }}>{POSTS[currentIndex - 1].title}</span>
+                      <span className="body-sm font-medium line-clamp-2" style={{ color: 'var(--fg-2)' }}>{posts[currentIndex - 1].title}</span>
                     </button>
                   ) : <div />}
                   {hasNext ? (
-                    <button onClick={() => goTo(POSTS[currentIndex + 1], 1)}
+                    <button onClick={() => goTo(posts[currentIndex + 1], 1)}
                       className="group flex flex-col gap-1.5 p-4 rounded-xl border text-right ml-auto w-full transition-all duration-200"
                       style={{ background: 'var(--bg-card)', borderColor: 'var(--border)' }}
                       onMouseEnter={e => (e.currentTarget.style.borderColor = 'var(--border-hover)')}
@@ -260,7 +312,7 @@ export default function FeedPage() {
                         Next
                         <svg width="9" height="9" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><path d="M5 12h14m-7-7 7 7-7 7"/></svg>
                       </span>
-                      <span className="body-sm font-medium line-clamp-2" style={{ color: 'var(--fg-2)' }}>{POSTS[currentIndex + 1].title}</span>
+                      <span className="body-sm font-medium line-clamp-2" style={{ color: 'var(--fg-2)' }}>{posts[currentIndex + 1].title}</span>
                     </button>
                   ) : <div />}
                 </div>

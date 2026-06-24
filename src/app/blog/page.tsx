@@ -1,10 +1,20 @@
 'use client';
 
+import { useEffect, useState } from 'react';
 import { motion } from 'framer-motion';
 import Link from 'next/link';
-import { POSTS } from '@/lib/posts';
+import type { Post } from '@/lib/posts';
 
 export default function BlogPage() {
+  const [posts, setPosts] = useState<Post[]>([]);
+
+  useEffect(() => {
+    fetch('/api/posts', { cache: 'no-store' })
+      .then(r => r.json())
+      .then(d => setPosts(d.posts ?? []))
+      .catch(() => setPosts([]));
+  }, []);
+
   return (
     <main className="min-h-screen pt-24 pb-32 px-5 md:px-8">
       <div className="max-w-3xl mx-auto">
@@ -23,7 +33,7 @@ export default function BlogPage() {
         </motion.div>
 
         <div className="space-y-3">
-          {POSTS.map((post, i) => (
+          {posts.map((post, i) => (
             <motion.div key={post.slug}
               initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }}
               transition={{ delay: i * 0.05, duration: 0.45, ease: [0.23, 1, 0.32, 1] }}>
