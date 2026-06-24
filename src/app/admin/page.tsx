@@ -9,6 +9,9 @@ import { MD } from '@/components/Markdown';
 type Status = 'loading' | 'setup' | 'login' | 'ready' | 'dberror';
 type View = 'list' | 'editor';
 type Tab = 'edit' | 'preview';
+type Section = 'posts' | 'messages';
+
+interface Message { id: string; name: string; email: string; message: string; createdAt: string; read: boolean; }
 
 const EMPTY_DRAFT: Post = {
   slug: '', title: '', excerpt: '', gradient: ['#0d1433', '#1a2a6c'],
@@ -99,6 +102,10 @@ export default function AdminPage() {
   const [loginError, setLoginError] = useState('');
 
   const [posts, setPosts] = useState<Post[]>([]);
+  const [section, setSection] = useState<Section>('posts');
+  const [messages, setMessages] = useState<Message[]>([]);
+  const [unread, setUnread] = useState(0);
+  const [openMsg, setOpenMsg] = useState<string | null>(null);
   const [search, setSearch] = useState('');
   const [view, setView] = useState<View>('list');
   const [tab, setTab] = useState<Tab>('edit');
@@ -128,20 +135,28 @@ export default function AdminPage() {
     setPosts(data.posts ?? []);
   }, []);
 
+  const loadMessages = useCallback(async () => {
+    const res = await fetch('/api/admin/messages', { cache: 'no-store' });
+    if (res.status === 401) { setStatus('login'); return; }
+    const data = await res.json();
+    setMessages(data.messages ?? []);
+    setUnread(data.unread ?? 0);
+  }, []);
+
   useEffect(() => {
     (async () => {
       try {
         const res = await fetch('/api/admin/session', { cache: 'no-store' });
         const d = await res.json();
         if (d.dbError) { setStatus('dberror'); return; }
-        if (d.authed) { await loadPosts(); setStatus('ready'); }
+        if (d.authed) { await Promise.all([loadPosts(), loadMessages()]); setStatus('ready'); }
         else if (d.needsSetup) setStatus('setup');
         else setStatus('login');
       } catch {
         setStatus('dberror');
       }
     })();
-  }, [loadPosts]);
+  }, [loadPosts, loadMessages]);
 
   // ---- Auth ----
   async function login(e: React.FormEvent) {
@@ -151,7 +166,7 @@ export default function AdminPage() {
       method: 'POST', headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ password }),
     });
-    if (res.ok) { setPassword(''); await loadPosts(); setStatus('ready'); }
+    if (res.ok) { setPassword(''); await Promise.all([loadPosts(), loadMessages()]); setStatus('ready'); }
     else { const d = await res.json().catch(() => ({})); setLoginError(d.error || 'Giriş başarısız.'); }
   }
 
@@ -164,7 +179,7 @@ export default function AdminPage() {
       method: 'POST', headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ password }),
     });
-    if (res.ok) { setPassword(''); setPassword2(''); await loadPosts(); setStatus('ready'); }
+    if (res.ok) { setPassword(''); setPassword2(''); await Promise.all([loadPosts(), loadMessages()]); setStatus('ready'); }
     else { const d = await res.json().catch(() => ({})); setLoginError(d.error || 'Kurulum başarısız.'); }
   }
 
@@ -214,6 +229,31 @@ export default function AdminPage() {
 
   function setField<K extends keyof Post>(key: K, value: Post[K]) {
     setDraft(d => ({ ...d, [key]: value }));
+  }
+
+  // ---- Mesaj aksiyonları ----
+  async function markRead(id: string, read: boolean) {
+    const res = await fetch(`/api/admin/messages/${id}`, {
+      method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ read }),
+    });
+    if (res.status === 401) return setStatus('login');
+    if (res.ok) loadMessages();
+  }
+  function openMessage(m: Message) {
+    if (openMsg === m.id) { setOpenMsg(null); return; }
+    setOpenMsg(m.id);
+    if (!m.read) markRead(m.id, true); // açınca okundu say
+  }
+  function confirmDeleteMessage(id: string) {
+    setConfirmState({
+      msg: 'Bu mesaj silinsin mi?',
+      action: async () => {
+        const res = await fetch(`/api/admin/messages/${id}`, { method: 'DELETE' });
+        if (res.status === 401) return setStatus('login');
+        if (res.ok) { await loadMessages(); notify('Mesaj silindi.'); }
+        else notify('Silinemedi.', 'err');
+      },
+    });
   }
 
   // ---- Blocks ----
@@ -509,6 +549,25 @@ export default function AdminPage() {
 
         {view === 'list' ? (
           <>
+            {/* Bölüm sekmeleri */}
+            <div className="flex items-center gap-1 p-1 rounded-xl mb-6 w-fit" style={{ background: 'var(--surface)' }}>
+              {([['posts', 'Yazılar'], ['messages', 'Mesajlar']] as [Section, string][]).map(([s, label]) => (
+                <button key={s} onClick={() => setSection(s)}
+                  className="font-mono text-[12px] px-4 py-2 rounded-lg transition-colors"
+                  style={section === s ? { background: 'var(--bg-card)', color: 'var(--fg)' } : { color: 'var(--fg-3)' }}>
+                  {label}
+                  {s === 'messages' && unread > 0 && (
+                    <span className="ml-1.5 inline-flex items-center justify-center min-w-[16px] h-[16px] px-1 rounded-full text-[9px] font-bold align-middle"
+                      style={{ background: 'var(--accent)', color: '#fff' }}>{unread}</span>
+                  )}
+                </button>
+              ))}
+            </div>
+
+            {section === 'messages' ? (
+              <MessagesPanel messages={messages} openMsg={openMsg} onOpen={openMessage} onToggleRead={markRead} onDelete={confirmDeleteMessage} />
+            ) : (
+            <>
             {/* Kurtarma: yarım kalmış taslak */}
             {recovered && (
               <motion.div initial={{ opacity: 0, y: -8 }} animate={{ opacity: 1, y: 0 }}
@@ -588,6 +647,8 @@ export default function AdminPage() {
               {filtered.length === 0 && <p className="body-sm" style={{ color: 'var(--fg-3)' }}>
                 {search ? 'Aramayla eşleşen yazı yok.' : 'Henüz yazı yok.'}</p>}
             </div>
+            </>
+            )}
           </>
         ) : (
           <form onSubmit={e => { e.preventDefault(); doSave(); }} className="space-y-5">
@@ -825,6 +886,54 @@ export default function AdminPage() {
 }
 
 const miniBtn = 'w-7 h-7 rounded-lg border flex items-center justify-center text-xs flex-shrink-0';
+
+function MessagesPanel({ messages, openMsg, onOpen, onToggleRead, onDelete }: {
+  messages: Message[]; openMsg: string | null;
+  onOpen: (m: Message) => void; onToggleRead: (id: string, read: boolean) => void; onDelete: (id: string) => void;
+}) {
+  if (messages.length === 0) {
+    return <p className="body-sm" style={{ color: 'var(--fg-3)' }}>Henüz mesaj yok. İletişim formundan gelenler burada görünecek.</p>;
+  }
+  return (
+    <div className="space-y-3">
+      {messages.map(m => {
+        const open = openMsg === m.id;
+        return (
+          <div key={m.id} className="rounded-xl border overflow-hidden"
+            style={{ background: 'var(--bg-card)', borderColor: m.read ? 'var(--border)' : 'color-mix(in srgb, var(--accent) 35%, transparent)' }}>
+            <button onClick={() => onOpen(m)} className="w-full text-left flex items-center gap-3 p-4">
+              {!m.read && <span className="w-2 h-2 rounded-full flex-shrink-0" style={{ background: 'var(--accent)' }} />}
+              <div className="flex-1 min-w-0">
+                <div className="flex items-center gap-2">
+                  <p className="text-[14px] truncate" style={{ color: 'var(--fg)', fontWeight: m.read ? 500 : 700 }}>{m.name}</p>
+                  <span className="font-mono text-[11px] truncate" style={{ color: 'var(--fg-3)' }}>{m.email}</span>
+                </div>
+                {!open && <p className="body-sm truncate" style={{ color: 'var(--fg-3)' }}>{m.message}</p>}
+              </div>
+              <span className="font-mono text-[10px] flex-shrink-0" style={{ color: 'var(--fg-3)' }}>
+                {new Date(m.createdAt).toLocaleDateString('tr-TR', { day: 'numeric', month: 'short' })}
+              </span>
+            </button>
+            {open && (
+              <div className="px-4 pb-4">
+                <p className="body-md whitespace-pre-wrap mb-4" style={{ color: 'var(--fg-2)' }}>{m.message}</p>
+                <div className="flex items-center gap-2 flex-wrap">
+                  <a href={`mailto:${m.email}?subject=${encodeURIComponent('Re: Portföy mesajın')}`}
+                    className="font-mono text-[11px] px-3 py-1.5 rounded-lg" style={{ background: 'var(--accent)', color: '#fff' }}>Yanıtla</a>
+                  <button onClick={() => onToggleRead(m.id, !m.read)} className="font-mono text-[11px] px-3 py-1.5 rounded-lg border"
+                    style={{ color: 'var(--fg-2)', borderColor: 'var(--border)' }}>{m.read ? 'Okunmadı yap' : 'Okundu yap'}</button>
+                  <button onClick={() => onDelete(m.id)} className="font-mono text-[11px] px-3 py-1.5 rounded-lg border"
+                    style={{ color: '#ff5d5d', borderColor: 'var(--border)' }}>Sil</button>
+                  <span className="font-mono text-[10px] ml-auto" style={{ color: 'var(--fg-3)' }}>{new Date(m.createdAt).toLocaleString('tr-TR')}</span>
+                </div>
+              </div>
+            )}
+          </div>
+        );
+      })}
+    </div>
+  );
+}
 
 function UploadButton({ onPick, uploading, label = 'Yükle' }: { onPick: (f: File) => void; uploading: boolean; label?: string }) {
   return (

@@ -48,18 +48,30 @@ export default function ContactPage() {
   const tc = t.contact;
 
   const [formState, setFormState] = useState<FormState>('idle');
-  const [form, setForm] = useState({ name: '', email: '', message: '' });
+  const [errorMsg, setErrorMsg] = useState('');
+  const [form, setForm] = useState({ name: '', email: '', message: '', company: '' });
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    setErrorMsg('');
     setFormState('sending');
-
-    await new Promise(r => setTimeout(r, 1200));
-
-    const mailto = `mailto:omerfaruk_yildiz@outlook.com?subject=Portfolio contact from ${encodeURIComponent(form.name)}&body=${encodeURIComponent(`Name: ${form.name}\nEmail: ${form.email}\n\n${form.message}`)}`;
-    window.location.href = mailto;
-
-    setFormState('sent');
+    try {
+      const res = await fetch('/api/contact', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(form),
+      });
+      if (res.ok) {
+        setFormState('sent');
+      } else {
+        const d = await res.json().catch(() => ({}));
+        setErrorMsg(d.error || 'Mesaj gönderilemedi.');
+        setFormState('error');
+      }
+    } catch {
+      setErrorMsg('Bağlantı hatası, lütfen tekrar dene.');
+      setFormState('error');
+    }
   };
 
   return (
@@ -148,6 +160,22 @@ export default function ContactPage() {
                   />
                 </div>
 
+                {/* Honeypot — botlar için görünmez tuzak alan */}
+                <input
+                  type="text" name="company" tabIndex={-1} autoComplete="off" aria-hidden="true"
+                  value={form.company}
+                  onChange={e => setForm(f => ({ ...f, company: e.target.value }))}
+                  style={{ position: 'absolute', left: '-9999px', width: 1, height: 1, opacity: 0 }}
+                />
+
+                {/* Hata mesajı */}
+                {formState === 'error' && errorMsg && (
+                  <p className="body-sm flex items-center gap-1.5" style={{ color: '#ff5d5d' }}>
+                    <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><circle cx="12" cy="12" r="10"/><path d="M12 8v4M12 16h.01"/></svg>
+                    {errorMsg}
+                  </p>
+                )}
+
                 {/* Submit */}
                 <div className="flex items-center justify-between pt-2">
                   <p className="font-mono text-[11px]" style={{ color: 'var(--fg-3)' }}>
@@ -208,7 +236,7 @@ export default function ContactPage() {
                 </p>
 
                 <button
-                  onClick={() => { setFormState('idle'); setForm({ name: '', email: '', message: '' }); }}
+                  onClick={() => { setFormState('idle'); setErrorMsg(''); setForm({ name: '', email: '', message: '', company: '' }); }}
                   className="mt-6 font-mono text-[11px] transition-opacity hover:opacity-100"
                   style={{ color: 'var(--accent)', opacity: 0.75 }}
                 >
