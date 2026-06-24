@@ -1,8 +1,9 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { checkPassword, createSessionToken, SESSION_COOKIE, SESSION_MAX_AGE } from '@/lib/auth';
+import { needsSetup, setupAdmin, createSessionToken, SESSION_COOKIE, SESSION_MAX_AGE } from '@/lib/auth';
 
 export const dynamic = 'force-dynamic';
 
+// İlk kurulum: yönetici şifresi henüz yoksa belirler ve oturumu açar.
 export async function POST(req: NextRequest) {
   let password = '';
   try {
@@ -12,10 +13,15 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: 'Geçersiz istek.' }, { status: 400 });
   }
 
+  if (password.length < 4) {
+    return NextResponse.json({ error: 'Şifre en az 4 karakter olmalı.' }, { status: 400 });
+  }
+
   try {
-    if (!password || !(await checkPassword(password))) {
-      return NextResponse.json({ error: 'Şifre hatalı.' }, { status: 401 });
+    if (!(await needsSetup())) {
+      return NextResponse.json({ error: 'Yönetici şifresi zaten tanımlı.' }, { status: 409 });
     }
+    await setupAdmin(password);
     const token = await createSessionToken();
     const res = NextResponse.json({ ok: true });
     res.cookies.set(SESSION_COOKIE, token, {
@@ -27,18 +33,7 @@ export async function POST(req: NextRequest) {
     });
     return res;
   } catch (err) {
-    // Genelde veritabanına bağlanılamıyordur (MONGODB_URI yanlış/eksik).
-    console.error('POST /api/admin/login', err);
-    return NextResponse.json(
-      { error: 'Veritabanına bağlanılamadı (MONGODB_URI yanlış veya eksik).' },
-      { status: 500 },
-    );
+    console.error('POST /api/admin/setup', err);
+    return NextResponse.json({ error: 'Veritabanına bağlanılamadı (MONGODB_URI yanlış veya eksik).' }, { status: 500 });
   }
-}
-
-// Çıkış
-export async function DELETE() {
-  const res = NextResponse.json({ ok: true });
-  res.cookies.delete(SESSION_COOKIE);
-  return res;
 }

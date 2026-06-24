@@ -6,7 +6,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import type { Post, ContentBlock } from '@/lib/posts';
 import { MD } from '@/components/Markdown';
 
-type Status = 'loading' | 'login' | 'ready';
+type Status = 'loading' | 'setup' | 'login' | 'ready' | 'dberror';
 type View = 'list' | 'editor';
 type Tab = 'edit' | 'preview';
 
@@ -94,6 +94,7 @@ function countWords(p: Post): number {
 export default function AdminPage() {
   const [status, setStatus] = useState<Status>('loading');
   const [password, setPassword] = useState('');
+  const [password2, setPassword2] = useState('');
   const [showPw, setShowPw] = useState(false);
   const [loginError, setLoginError] = useState('');
 
@@ -129,10 +130,16 @@ export default function AdminPage() {
 
   useEffect(() => {
     (async () => {
-      const res = await fetch('/api/admin/session', { cache: 'no-store' });
-      const { authed } = await res.json();
-      if (authed) { await loadPosts(); setStatus('ready'); }
-      else setStatus('login');
+      try {
+        const res = await fetch('/api/admin/session', { cache: 'no-store' });
+        const d = await res.json();
+        if (d.dbError) { setStatus('dberror'); return; }
+        if (d.authed) { await loadPosts(); setStatus('ready'); }
+        else if (d.needsSetup) setStatus('setup');
+        else setStatus('login');
+      } catch {
+        setStatus('dberror');
+      }
     })();
   }, [loadPosts]);
 
@@ -146,6 +153,19 @@ export default function AdminPage() {
     });
     if (res.ok) { setPassword(''); await loadPosts(); setStatus('ready'); }
     else { const d = await res.json().catch(() => ({})); setLoginError(d.error || 'Giriş başarısız.'); }
+  }
+
+  async function setupSubmit(e: React.FormEvent) {
+    e.preventDefault();
+    setLoginError('');
+    if (password.length < 4) { setLoginError('Şifre en az 4 karakter olmalı.'); return; }
+    if (password !== password2) { setLoginError('Şifreler eşleşmiyor.'); return; }
+    const res = await fetch('/api/admin/setup', {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ password }),
+    });
+    if (res.ok) { setPassword(''); setPassword2(''); await loadPosts(); setStatus('ready'); }
+    else { const d = await res.json().catch(() => ({})); setLoginError(d.error || 'Kurulum başarısız.'); }
   }
 
   async function logout() {
@@ -337,6 +357,60 @@ export default function AdminPage() {
     return <main className="min-h-screen flex items-center justify-center" style={{ color: 'var(--fg-3)' }}>
       <span className="font-mono text-sm">yükleniyor…</span>
     </main>;
+  }
+
+  if (status === 'dberror') {
+    return (
+      <main className="min-h-screen flex items-center justify-center px-5">
+        <div className="w-full max-w-md p-8 rounded-3xl border text-center"
+          style={{ background: 'var(--bg-card)', borderColor: 'var(--border)' }}>
+          <div className="w-14 h-14 rounded-2xl mb-6 mx-auto flex items-center justify-center"
+            style={{ background: 'color-mix(in srgb, #ff5d5d 14%, transparent)' }}>
+            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#ff5d5d" strokeWidth="2"><circle cx="12" cy="12" r="10"/><path d="M12 8v4M12 16h.01"/></svg>
+          </div>
+          <h1 className="display-md mb-2" style={{ color: 'var(--fg)' }}>Veritabanına bağlanılamadı</h1>
+          <p className="body-sm mb-5" style={{ color: 'var(--fg-3)' }}>
+            <code style={{ color: 'var(--fg-2)' }}>MONGODB_URI</code> tanımlı değil ya da yanlış. Atlas bağlantı adresini (gerçek şifreyle)
+            ortam değişkenlerine ekleyip yeniden dene.
+          </p>
+          <Link href="/feed" className="font-mono text-[12px]" style={{ color: 'var(--accent)' }}>← /feed</Link>
+        </div>
+      </main>
+    );
+  }
+
+  if (status === 'setup') {
+    return (
+      <main className="min-h-screen flex items-center justify-center px-5 relative overflow-hidden">
+        <div className="pointer-events-none absolute inset-0 flex items-center justify-center">
+          <div className="w-[420px] h-[420px] rounded-full opacity-[0.18] blur-[90px]"
+            style={{ background: 'radial-gradient(circle, var(--accent), transparent 70%)' }} />
+        </div>
+        <motion.form onSubmit={setupSubmit}
+          initial={{ opacity: 0, y: 16, scale: 0.98 }} animate={{ opacity: 1, y: 0, scale: 1 }}
+          transition={{ duration: 0.5, ease: [0.23, 1, 0.32, 1] }}
+          className="relative z-10 w-full max-w-sm p-8 rounded-3xl border"
+          style={{ background: 'var(--bg-card)', borderColor: 'var(--border)', boxShadow: '0 24px 60px -20px rgba(0,0,0,0.45)' }}>
+          <div className="w-14 h-14 rounded-2xl mb-6 flex items-center justify-center"
+            style={{ background: 'linear-gradient(135deg, var(--accent), #0a5fff)', boxShadow: '0 8px 24px -6px color-mix(in srgb, var(--accent) 60%, transparent)' }}>
+            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="2"><path d="M12 20h9"/><path d="M16.5 3.5a2.12 2.12 0 0 1 3 3L7 19l-4 1 1-4Z"/></svg>
+          </div>
+          <h1 className="display-md mb-1.5" style={{ color: 'var(--fg)' }}>İlk kurulum</h1>
+          <p className="body-sm mb-7" style={{ color: 'var(--fg-3)' }}>Yönetici şifreni belirle — veritabanında güvenle saklanır.</p>
+          <input type={showPw ? 'text' : 'password'} value={password} onChange={e => setPassword(e.target.value)}
+            placeholder="Yeni şifre" autoFocus className="input mb-3" />
+          <input type={showPw ? 'text' : 'password'} value={password2} onChange={e => setPassword2(e.target.value)}
+            placeholder="Şifre (tekrar)" className="input mb-3" />
+          <label className="flex items-center gap-2 mb-4 font-mono text-[11px] cursor-pointer" style={{ color: 'var(--fg-3)' }}>
+            <input type="checkbox" checked={showPw} onChange={e => setShowPw(e.target.checked)} /> Şifreyi göster
+          </label>
+          {loginError && <p className="body-sm mb-3" style={{ color: '#ff5d5d' }}>{loginError}</p>}
+          <button type="submit"
+            className="w-full px-4 py-3 rounded-xl font-semibold text-sm transition-all duration-200 hover:opacity-90 active:scale-[0.98]"
+            style={{ background: 'var(--accent)', color: '#fff' }}>Şifreyi belirle ve gir</button>
+        </motion.form>
+      </main>
+    );
   }
 
   if (status === 'login') {
