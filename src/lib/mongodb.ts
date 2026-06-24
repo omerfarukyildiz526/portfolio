@@ -2,20 +2,22 @@ import 'server-only';
 import { MongoClient, Db, Collection } from 'mongodb';
 import type { Post } from './posts';
 
+// Bağlantı bilgisi doğrudan kodda — hiçbir ortam değişkeni (env) gerekmez.
+// Böylece Vercel'de ayar yapmadan, deploy ettiğin anda çalışır.
+// ⚠️ GÜVENLİK: Bu dosya (şifre dahil) git deposuna gider. Depo PRIVATE olmalı.
+//    İstersen yine de MONGODB_URI env'i tanımlayarak buradaki değeri geçersiz kılabilirsin.
+const DEFAULT_URI = 'mongodb+srv://1abcdl:956T23kkFs6mIRKv@cluster0.xzoueys.mongodb.net/?retryWrites=true&w=majority&appName=Cluster0';
+
+const uri = process.env.MONGODB_URI || DEFAULT_URI;
 const dbName = process.env.MONGODB_DB || 'portfolio';
 
 type Cache = typeof globalThis & { _mongo?: Promise<MongoClient> };
 
-// Bağlantıyı tembel (lazy) kuruyoruz: modül yüklenirken değil, ilk sorguda.
-// Böylece env değişkeni olmadan da build (next build) çökmez.
-// Serverless ortamda (Vercel) tekrar tekrar bağlanmamak için global cache.
+// Bağlantıyı tembel (lazy) kuruyoruz; serverless'ta (Vercel) tekrar tekrar
+// bağlanmamak için global cache kullanıyoruz.
 function getClient(): Promise<MongoClient> {
   const g = global as Cache;
   if (!g._mongo) {
-    const uri = process.env.MONGODB_URI;
-    if (!uri) {
-      throw new Error('MONGODB_URI ortam değişkeni tanımlı değil (.env.local dosyasına ekle).');
-    }
     g._mongo = new MongoClient(uri).connect();
   }
   return g._mongo;
