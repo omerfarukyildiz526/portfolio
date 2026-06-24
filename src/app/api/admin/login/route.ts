@@ -12,19 +12,27 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: 'Geçersiz istek.' }, { status: 400 });
   }
 
-  if (!password || !checkPassword(password)) {
-    return NextResponse.json({ error: 'Şifre hatalı.' }, { status: 401 });
+  try {
+    if (!password || !checkPassword(password)) {
+      return NextResponse.json({ error: 'Şifre hatalı.' }, { status: 401 });
+    }
+    const res = NextResponse.json({ ok: true });
+    res.cookies.set(SESSION_COOKIE, createSessionToken(), {
+      httpOnly: true,
+      secure: process.env.NODE_ENV === 'production',
+      sameSite: 'lax',
+      path: '/',
+      maxAge: SESSION_MAX_AGE,
+    });
+    return res;
+  } catch (err) {
+    // checkPassword / createSessionToken, env değişkeni yoksa hata fırlatır.
+    console.error('POST /api/admin/login', err);
+    return NextResponse.json(
+      { error: 'Sunucu yapılandırması eksik: ADMIN_PASSWORD / ADMIN_SECRET tanımlı değil.' },
+      { status: 500 },
+    );
   }
-
-  const res = NextResponse.json({ ok: true });
-  res.cookies.set(SESSION_COOKIE, createSessionToken(), {
-    httpOnly: true,
-    secure: process.env.NODE_ENV === 'production',
-    sameSite: 'lax',
-    path: '/',
-    maxAge: SESSION_MAX_AGE,
-  });
-  return res;
 }
 
 // Çıkış
