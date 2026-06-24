@@ -3,11 +3,11 @@ import type { Metadata } from "next";
 export const metadata: Metadata = {
   title: "Feed",
   description:
-    "Backend, RPA ve sistem entegrasyonu üzerine mühendislik notları ve teknik yazılar. Python, C# / .NET, SAP RFC, Docker ve Entity Framework Core.",
+    "Backend, RPA ve sistem entegrasyonu üzerine programcı notları ve teknik yazılar. Python, C# / .NET, SAP RFC, Docker ve Entity Framework Core.",
   openGraph: {
     title: "Feed | Ömer Faruk Yıldız",
     description:
-      "Backend, RPA ve sistem entegrasyonu üzerine mühendislik notları ve teknik yazılar.",
+      "Backend, RPA ve sistem entegrasyonu üzerine programcı notları ve teknik yazılar.",
     type: "website",
   },
 };

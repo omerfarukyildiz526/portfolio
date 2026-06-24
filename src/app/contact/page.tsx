@@ -113,7 +113,7 @@ export default function ContactPage() {
                 {/* Name */}
                 <div>
                   <label className="label block mb-2" htmlFor="name" style={{ color: 'var(--fg-3)' }}>
-                    Name
+                    {tc.formName}
                   </label>
                   <input
                     id="name"
@@ -122,7 +122,7 @@ export default function ContactPage() {
                     value={form.name}
                     onChange={e => setForm(f => ({ ...f, name: e.target.value }))}
                     className="input"
-                    placeholder="Your name"
+                    placeholder={tc.formNamePh}
                     autoComplete="name"
                   />
                 </div>
@@ -130,7 +130,7 @@ export default function ContactPage() {
                 {/* Email */}
                 <div>
                   <label className="label block mb-2" htmlFor="email" style={{ color: 'var(--fg-3)' }}>
-                    Email
+                    {tc.formEmail}
                   </label>
                   <input
                     id="email"
@@ -139,7 +139,7 @@ export default function ContactPage() {
                     value={form.email}
                     onChange={e => setForm(f => ({ ...f, email: e.target.value }))}
                     className="input"
-                    placeholder="you@example.com"
+                    placeholder={tc.formEmailPh}
                     autoComplete="email"
                   />
                 </div>
@@ -147,7 +147,7 @@ export default function ContactPage() {
                 {/* Message */}
                 <div>
                   <label className="label block mb-2" htmlFor="message" style={{ color: 'var(--fg-3)' }}>
-                    Message
+                    {tc.formMessage}
                   </label>
                   <textarea
                     id="message"
@@ -155,7 +155,7 @@ export default function ContactPage() {
                     value={form.message}
                     onChange={e => setForm(f => ({ ...f, message: e.target.value }))}
                     className="input"
-                    placeholder="What's on your mind?"
+                    placeholder={tc.formMessagePh}
                     rows={5}
                   />
                 </div>
@@ -179,7 +179,7 @@ export default function ContactPage() {
                 {/* Submit */}
                 <div className="flex items-center justify-between pt-2">
                   <p className="font-mono text-[11px]" style={{ color: 'var(--fg-3)' }}>
-                    Replies within 24 hours.
+                    {tc.formReply}
                   </p>
 
                   <button
@@ -190,12 +190,12 @@ export default function ContactPage() {
                     {formState === 'sending' ? (
                       <>
                         <div className="w-4 h-4 rounded-full border-2 border-t-transparent animate-spin" style={{ borderColor: 'var(--bg)', borderTopColor: 'transparent' }} />
-                        Sending…
+                        {tc.formSending}
                       </>
                     ) : (
                       <>
                         <span className="method-post text-[9px]" style={{ background: 'rgba(255,255,255,0.15)', border: 'none' }}>POST</span>
-                        Send message
+                        {tc.formSend}
                         <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
                           <path d="M5 12h14m-7-7 7 7-7 7"/>
                         </svg>
@@ -229,10 +229,10 @@ export default function ContactPage() {
                 </div>
 
                 <p className="body-md mb-2" style={{ color: 'var(--fg)' }}>
-                  Message received.
+                  {tc.successTitle}
                 </p>
                 <p className="body-sm" style={{ color: 'var(--fg-3)' }}>
-                  I'll reply to <span className="font-mono" style={{ color: 'var(--fg-2)' }}>{form.email}</span> within 24 hours.
+                  {tc.successDesc(form.email)}
                 </p>
 
                 <button
@@ -240,7 +240,7 @@ export default function ContactPage() {
                   className="mt-6 font-mono text-[11px] transition-opacity hover:opacity-100"
                   style={{ color: 'var(--accent)', opacity: 0.75 }}
                 >
-                  Send another →
+                  {tc.successAnother}
                 </button>
               </motion.div>
             )}
@@ -252,7 +252,7 @@ export default function ContactPage() {
           initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }}
           transition={{ delay: 0.3, duration: 0.6, ease: [0.23, 1, 0.32, 1] }}
         >
-          <p className="label mb-5">Or reach out directly</p>
+          <p className="label mb-5">{tc.directLabel}</p>
 
           <div className="flex flex-col gap-3">
             {CONTACT_LINKS.map((link, i) => (

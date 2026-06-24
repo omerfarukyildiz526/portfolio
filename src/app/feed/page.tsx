@@ -172,8 +172,8 @@ export default function FeedPage() {
           <h1 className="display-lg mb-3" style={{ color: 'var(--fg)' }}>FEED.</h1>
           <p className="body-md" style={{ color: 'var(--fg-2)' }}>
             {lang === 'tr'
-              ? 'Mühendislik notları — çözüp bir yere yazmak istediğim şeyler.'
-              : 'Engineering notes — things I worked out and wanted written down.'}
+              ? 'Programcı notları — çözüp bir yere yazmak istediğim şeyler.'
+              : 'Programmer notes — things I worked out and wanted written down.'}
           </p>
         </motion.div>
 
