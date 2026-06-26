@@ -156,7 +156,7 @@ export default function ContactPage() {
                     onChange={e => setForm(f => ({ ...f, message: e.target.value }))}
                     className="input"
                     placeholder={tc.formMessagePh}
-                    rows={5}
+                    rows={4}
                   />
                 </div>
 

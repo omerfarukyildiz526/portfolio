@@ -21,10 +21,26 @@ export default function NavBar() {
   const { theme, setTheme } = useTheme();
   const { lang, setLang } = useLang();
   const [mounted, setMounted] = useState(false);
+  const [now, setNow] = useState<Date | null>(null);
 
   useEffect(() => setMounted(true), []);
 
+  useEffect(() => {
+    setNow(new Date());
+    const id = setInterval(() => setNow(new Date()), 1000);
+    return () => clearInterval(id);
+  }, []);
+
   const isLight = mounted && theme === 'light';
+
+  const istanbulTime = now
+    ? new Intl.DateTimeFormat('tr-TR', {
+        timeZone: 'Europe/Istanbul',
+        hour: '2-digit',
+        minute: '2-digit',
+        second: '2-digit',
+      }).format(now)
+    : '';
 
   return (
     <motion.header
@@ -112,14 +128,14 @@ export default function NavBar() {
 
           {/* Language toggle */}
           <div
-            className="flex items-center rounded-md overflow-hidden border"
+            className="flex items-center h-6 rounded-md overflow-hidden border"
             style={{ borderColor: 'var(--border)' }}
           >
             {(['tr', 'en'] as const).map((l) => (
               <button
                 key={l}
                 onClick={() => setLang(l)}
-                className="px-2.5 py-1 text-[10px] font-mono font-bold uppercase tracking-widest transition-all duration-150"
+                className="h-full px-2.5 text-[10px] font-mono font-bold uppercase tracking-widest transition-all duration-150"
                 style={{
                   background: lang === l ? 'var(--fg)' : 'transparent',
                   color:      lang === l ? 'var(--bg)' : 'var(--fg-3)',
@@ -130,10 +146,30 @@ export default function NavBar() {
             ))}
           </div>
 
+          {/* Istanbul clock — desktop only */}
+          <div
+            className="hidden md:flex items-center gap-1.5 leading-none rounded-md px-2.5 h-6 border"
+            style={{ borderColor: 'var(--border)', background: 'var(--surface)' }}
+            aria-label="Istanbul saati"
+          >
+            <span
+              className="font-mono text-[8px] uppercase tracking-widest"
+              style={{ color: 'var(--fg-3)' }}
+            >
+              Istanbul, TR
+            </span>
+            <span
+              className="font-mono text-[11px] font-bold tracking-wider tabular-nums"
+              style={{ color: 'var(--fg)' }}
+            >
+              {istanbulTime || '--:--:--'}
+            </span>
+          </div>
+
           {/* Theme toggle */}
           <button
             onClick={() => setTheme(isLight ? 'dark' : 'light')}
-            className="w-8 h-8 rounded-md flex items-center justify-center transition-colors"
+            className="w-6 h-6 rounded-md flex items-center justify-center transition-colors"
             style={{
               background:   'var(--surface)',
               border:       '1px solid var(--border)',
