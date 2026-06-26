@@ -2,7 +2,7 @@
 
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { motion } from 'framer-motion';
+import { motion, AnimatePresence } from 'framer-motion';
 import { useTheme } from 'next-themes';
 import { useEffect, useState } from 'react';
 import { useLang } from '@/lib/i18n';
@@ -22,6 +22,7 @@ export default function NavBar() {
   const { lang, setLang } = useLang();
   const [mounted, setMounted] = useState(false);
   const [now, setNow] = useState<Date | null>(null);
+  const [menuOpen, setMenuOpen] = useState(false);
 
   useEffect(() => setMounted(true), []);
 
@@ -42,6 +43,12 @@ export default function NavBar() {
       }).format(now)
     : '';
 
+  // Mobilde sol boşluğu dolduran, o anki sayfanın API rota göstergesi.
+  const current  = ROUTES.find(r => r.path === pathname);
+  const apiPath  = current ? (current.path === '/' ? '/api' : `/api${current.path}`) : '';
+  const isPostCur = current?.method === 'POST';
+  const statusCur = isPostCur ? '201 Created' : '200 OK';
+
   return (
     <motion.header
       initial={{ y: -60, opacity: 0 }}
@@ -51,9 +58,17 @@ export default function NavBar() {
     >
       <div className="max-w-[1400px] mx-auto h-full px-3 md:px-8 flex items-center gap-1">
 
-        {/* Routes — horizontally scrollable on mobile */}
+        {/* Brand logo — desktop only, links home */}
+        <Link href="/" aria-label="Ana sayfa" className="hidden md:flex flex-shrink-0 mr-2.5 items-center">
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img src="/logo.png" alt="Ömer Faruk Yıldız" width={32} height={32}
+            className="w-8 h-8 rounded-full transition-transform duration-200 hover:scale-105"
+            style={{ border: '1px solid var(--border)' }} />
+        </Link>
+
+        {/* Routes — desktop only (mobile uses the hamburger menu) */}
         <div className="relative flex-1 min-w-0">
-          <nav className="flex items-center gap-0.5 overflow-x-auto scrollbar-hide" aria-label="Primary navigation">
+          <nav className="hidden md:flex items-center gap-0.5 overflow-x-auto scrollbar-hide" aria-label="Primary navigation">
             {ROUTES.map((r) => {
               const isActive = pathname === r.path;
               const isPost   = r.method === 'POST';
@@ -104,23 +119,31 @@ export default function NavBar() {
             })}
           </nav>
 
-          {/* Right-edge fade — hints there's more to scroll (mobile only) */}
-          <div
-            className="md:hidden pointer-events-none absolute top-0 right-0 h-full w-10"
-            style={{ background: 'linear-gradient(to right, transparent, var(--bg))' }}
-          />
-
-          {/* Subtle nudging arrow — hints the menu scrolls (mobile only) */}
-          <motion.div
-            className="md:hidden pointer-events-none absolute top-1/2 right-0.5 -translate-y-1/2"
-            style={{ color: 'var(--fg-3)' }}
-            animate={{ x: [0, 3, 0], opacity: [0.35, 0.7, 0.35] }}
-            transition={{ duration: 1.6, repeat: Infinity, ease: 'easeInOut' }}
-          >
-            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-              <polyline points="9 18 15 12 9 6" />
-            </svg>
-          </motion.div>
+          {/* Mobile-only: current page's API route indicator (fills the left gap) */}
+          {current && (
+            <div className="md:hidden flex items-center gap-1.5 min-w-0 overflow-hidden">
+              <span
+                className="font-mono text-[9px] font-bold tracking-wider uppercase leading-none px-1.5 py-0.5 rounded flex-shrink-0"
+                style={{
+                  color:      isPostCur ? 'var(--accent-post)' : 'var(--accent)',
+                  background:  isPostCur
+                    ? 'color-mix(in srgb, var(--accent-post) 12%, transparent)'
+                    : 'color-mix(in srgb, var(--accent) 12%, transparent)',
+                }}
+              >
+                {current.method}
+              </span>
+              <span className="font-mono text-[11px] tracking-tight truncate" style={{ color: 'var(--fg-2)' }}>
+                {apiPath}
+              </span>
+              <span
+                className="font-mono text-[10px] flex-shrink-0"
+                style={{ color: isPostCur ? 'var(--accent-post)' : 'var(--accent)', opacity: 0.65 }}
+              >
+                → {statusCur}
+              </span>
+            </div>
+          )}
         </div>
 
         {/* Utilities */}
@@ -197,8 +220,87 @@ export default function NavBar() {
               </svg>
             )}
           </button>
+
+          {/* Hamburger — mobile only, opens the route menu */}
+          <button
+            onClick={() => setMenuOpen(o => !o)}
+            className="md:hidden w-6 h-6 rounded-md flex items-center justify-center transition-colors"
+            style={{
+              background: menuOpen ? 'var(--fg)' : 'var(--surface)',
+              border:     '1px solid var(--border)',
+              color:      menuOpen ? 'var(--bg)' : 'var(--fg-3)',
+            }}
+            aria-label="Menü"
+            aria-expanded={menuOpen}
+          >
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
+              <line x1="4" y1="9" x2="20" y2="9" />
+              <line x1="4" y1="15" x2="20" y2="15" />
+            </svg>
+          </button>
         </div>
       </div>
+
+      {/* ── Mobile menu — backdrop + dropdown panel ── */}
+      <AnimatePresence>
+        {menuOpen && (
+          <>
+            {/* Backdrop (dışına dokununca kapanır) */}
+            <motion.div
+              className="md:hidden fixed inset-0 top-14"
+              style={{ background: 'rgba(0,0,0,0.4)', backdropFilter: 'blur(2px)' }}
+              initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
+              onClick={() => setMenuOpen(false)}
+            />
+            {/* Panel */}
+            <motion.nav
+              className="md:hidden absolute left-0 right-0 top-full origin-top overflow-hidden"
+              style={{ background: 'var(--bg)', borderBottom: '1px solid var(--border)' }}
+              initial={{ opacity: 0, height: 0 }}
+              animate={{ opacity: 1, height: 'auto' }}
+              exit={{ opacity: 0, height: 0 }}
+              transition={{ duration: 0.28, ease: [0.23, 1, 0.32, 1] }}
+              aria-label="Mobil menü"
+            >
+              <div className="px-5 py-3 flex flex-col">
+                {ROUTES.map((r) => {
+                  const isActive = pathname === r.path;
+                  const isPost   = r.method === 'POST';
+                  return (
+                    <Link
+                      key={r.path}
+                      href={r.path}
+                      onClick={() => setMenuOpen(false)}
+                      aria-current={isActive ? 'page' : undefined}
+                      className="flex items-center gap-3 py-3"
+                      style={{ borderBottom: '1px solid var(--border)' }}
+                    >
+                      <span
+                        className="font-mono text-[9px] font-bold tracking-wider uppercase leading-none px-1.5 py-0.5 rounded"
+                        style={{
+                          color:      isPost ? 'var(--accent-post)' : 'var(--accent)',
+                          background:  isPost
+                            ? 'color-mix(in srgb, var(--accent-post) 12%, transparent)'
+                            : 'color-mix(in srgb, var(--accent) 12%, transparent)',
+                          opacity: isActive ? 1 : 0.7,
+                        }}
+                      >
+                        {r.method}
+                      </span>
+                      <span
+                        className="font-mono text-[15px] tracking-tight"
+                        style={{ color: isActive ? 'var(--fg)' : 'var(--fg-2)', fontWeight: isActive ? 600 : 400 }}
+                      >
+                        {r.label}
+                      </span>
+                    </Link>
+                  );
+                })}
+              </div>
+            </motion.nav>
+          </>
+        )}
+      </AnimatePresence>
     </motion.header>
   );
 }

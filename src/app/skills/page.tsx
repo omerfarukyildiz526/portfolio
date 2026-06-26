@@ -142,7 +142,7 @@ export default function SkillsPage() {
           transition={{ duration: 0.6, ease: [0.23, 1, 0.32, 1] }}
           className="mb-16"
         >
-          <div className="flex items-center gap-2.5 mb-6">
+          <div className="hidden md:flex items-center gap-2.5 mb-6">
             <span className="method-get">GET</span>
             <span className="font-mono text-[12px]" style={{ color: 'var(--fg-3)' }}>{ts.pageRoute}</span>
             <span className="font-mono text-[11px]" style={{ color: 'var(--accent)', opacity: 0.6 }}>→ 200 OK</span>
