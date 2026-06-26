@@ -116,6 +116,8 @@ export default function AdminPage() {
   const [password2, setPassword2] = useState('');
   const [showPw, setShowPw] = useState(false);
   const [loginError, setLoginError] = useState('');
+  const [code, setCode] = useState('');           // "şifre" gibi görünen e-posta kodu
+  const [verifying, setVerifying] = useState(false);
 
   const [posts, setPosts] = useState<Post[]>([]);
   const [section, setSection] = useState<Section>('home');
@@ -167,7 +169,17 @@ export default function AdminPage() {
         if (d.dbError) { setStatus('dberror'); return; }
         if (d.authed) { await Promise.all([loadPosts(), loadMessages()]); setStatus('ready'); }
         else if (d.needsSetup) setStatus('setup');
-        else setStatus('login');
+        else {
+          setStatus('login');
+          // Kandırma: "şifre" ekranı açılır açılmaz arka planda e-posta kodu gönder.
+          const lr = await fetch('/api/admin/login', { method: 'POST' });
+          const ld = await lr.json().catch(() => ({}));
+          if (lr.ok && !ld.codeRequired) {
+            // SMTP yok → doğrudan giriş (geliştirme).
+            await Promise.all([loadPosts(), loadMessages()]);
+            setStatus('ready');
+          }
+        }
       } catch {
         setStatus('dberror');
       }
@@ -175,15 +187,24 @@ export default function AdminPage() {
   }, [loadPosts, loadMessages]);
 
   // ---- Auth ----
-  async function login(e: React.FormEvent) {
+  // "Şifre" gibi görünen alan aslında e-posta doğrulama kodudur (kandırma).
+  async function submitCode(e: React.FormEvent) {
     e.preventDefault();
+    if (verifying || !code) return;
     setLoginError('');
-    const res = await fetch('/api/admin/login', {
+    setVerifying(true);
+    const res = await fetch('/api/admin/verify', {
       method: 'POST', headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ password }),
+      body: JSON.stringify({ code }),
     });
-    if (res.ok) { setPassword(''); await Promise.all([loadPosts(), loadMessages()]); setStatus('ready'); }
-    else { const d = await res.json().catch(() => ({})); setLoginError(d.error || 'Giriş başarısız.'); }
+    setVerifying(false);
+    if (res.ok) {
+      setCode('');
+      await Promise.all([loadPosts(), loadMessages()]);
+      setStatus('ready');
+    } else {
+      setLoginError('Şifre hatalı.'); // gerçekte kod hatalı — ama kandırma için
+    }
   }
 
   async function setupSubmit(e: React.FormEvent) {
@@ -495,22 +516,28 @@ export default function AdminPage() {
           </div>
         </div>
 
-        <motion.form onSubmit={login}
+        <motion.form onSubmit={submitCode}
           initial={{ opacity: 0, y: 16, scale: 0.98 }} animate={{ opacity: 1, y: 0, scale: 1 }}
           transition={{ duration: 0.5, ease: [0.23, 1, 0.32, 1] }}
           className="relative z-10 w-full max-w-sm p-8 rounded-3xl border"
           style={{ background: 'var(--bg-card)', borderColor: 'var(--border)', boxShadow: '0 24px 60px -20px rgba(0,0,0,0.45)' }}>
-          <div className="w-14 h-14 rounded-2xl mb-6 flex items-center justify-center"
-            style={{ background: 'linear-gradient(135deg, var(--accent), #0a5fff)', boxShadow: '0 8px 24px -6px color-mix(in srgb, var(--accent) 60%, transparent)' }}>
-            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="2">
-              <rect width="18" height="11" x="3" y="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
-          </div>
-          <h1 className="display-md mb-1.5" style={{ color: 'var(--fg)' }}>Yönetici Girişi</h1>
-          <p className="body-sm mb-7" style={{ color: 'var(--fg-3)' }}>Paneli açmak için şifreni gir.</p>
+          <motion.div className="w-16 h-16 rounded-2xl mb-6 flex items-center justify-center overflow-hidden"
+            style={{ border: '1px solid var(--border)' }}
+            animate={{ boxShadow: [
+              '0 0 0 0 color-mix(in srgb, var(--accent) 55%, transparent)',
+              '0 0 26px 6px color-mix(in srgb, var(--accent) 55%, transparent)',
+              '0 0 0 0 color-mix(in srgb, var(--accent) 55%, transparent)',
+            ] }}
+            transition={{ duration: 2, repeat: Infinity, ease: 'easeInOut' }}>
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img src="/logo.png" alt="ÖFY" className="w-full h-full object-cover" />
+          </motion.div>
+          <h1 className="display-md mb-1.5" style={{ color: 'var(--fg)' }}>Merhaba Admin 👋</h1>
+          <p className="body-sm mb-7" style={{ color: 'var(--fg-3)' }}>Kontrol Merkezi&apos;ne hoş geldin. Giriş için şifreni gir lütfen.</p>
           <div className="relative mb-3">
-            <input type={showPw ? 'text' : 'password'} value={password} onChange={e => setPassword(e.target.value)}
-              placeholder="••••••••" autoFocus className="input" style={{ paddingRight: 44 }} />
-            <button type="button" onClick={() => setShowPw(s => !s)} aria-label="Şifreyi göster/gizle"
+            <input type={showPw ? 'text' : 'password'} value={code} onChange={e => setCode(e.target.value)}
+              placeholder="••••••••" autoFocus autoComplete="off" className="input" style={{ paddingRight: 44 }} />
+            <button type="button" onClick={() => setShowPw(s => !s)} aria-label="Göster/gizle"
               className="absolute right-3 top-1/2 -translate-y-1/2" style={{ color: 'var(--fg-3)', opacity: 0.7 }}>
               {showPw ? (
                 <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M9.88 9.88a3 3 0 1 0 4.24 4.24"/><path d="M10.73 5.08A10.43 10.43 0 0 1 12 5c7 0 10 7 10 7a13.16 13.16 0 0 1-1.67 2.68"/><path d="M6.61 6.61A13.526 13.526 0 0 0 2 12s3 7 10 7a9.74 9.74 0 0 0 5.39-1.61"/><line x1="2" x2="22" y1="2" y2="22"/></svg>
@@ -526,15 +553,16 @@ export default function AdminPage() {
               {loginError}
             </motion.p>
           )}
-          <button type="submit"
-            className="w-full px-4 py-3 rounded-xl font-semibold text-sm transition-all duration-200 hover:opacity-90 active:scale-[0.98]"
+          <button type="submit" disabled={verifying || !code}
+            className="w-full px-4 py-3 rounded-xl font-semibold text-sm transition-all duration-200 hover:opacity-90 active:scale-[0.98] disabled:opacity-50"
             style={{ background: 'var(--accent)', color: '#fff', boxShadow: '0 8px 24px -8px color-mix(in srgb, var(--accent) 70%, transparent)' }}>
-            Giriş yap
+            {verifying ? 'Giriş yapılıyor…' : 'Giriş yap'}
           </button>
         </motion.form>
       </main>
     );
   }
+
 
   // ─────────── READY ───────────
   return (
@@ -553,18 +581,21 @@ export default function AdminPage() {
               <span style={{ color: 'var(--accent)' }}>// bir şeyi bozarsan, onu da yine sen düzeltirsin 🫡</span>
             </p>
           </div>
-          <motion.button onClick={logout}
+          <motion.div className="flex items-center gap-2"
             initial={{ opacity: 0, rotateY: -90 }} animate={{ opacity: 1, rotateY: 0 }}
             transition={{ delay: 0.15, duration: 0.55, ease: [0.23, 1, 0.32, 1] }}
-            className="group flex items-center gap-2 font-mono text-[11px] px-3.5 py-2 rounded-full border transition-all duration-200"
-            style={{ transformPerspective: 700, background: 'var(--bg-card)', borderColor: 'var(--border)', color: 'var(--fg-2)' }}
-            onMouseEnter={e => { e.currentTarget.style.borderColor = 'var(--accent)'; e.currentTarget.style.color = 'var(--accent)'; }}
-            onMouseLeave={e => { e.currentTarget.style.borderColor = 'var(--border)'; e.currentTarget.style.color = 'var(--fg-2)'; }}>
-            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"
-              className="transition-transform duration-200 group-hover:translate-x-0.5">
-              <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" x2="9" y1="12" y2="12"/></svg>
-            Çıkış
-          </motion.button>
+            style={{ transformPerspective: 700 }}>
+            <button onClick={logout}
+              className="group flex items-center gap-2 font-mono text-[11px] px-3.5 py-2 rounded-full border transition-all duration-200"
+              style={{ background: 'var(--bg-card)', borderColor: 'var(--border)', color: 'var(--fg-2)' }}
+              onMouseEnter={e => { e.currentTarget.style.borderColor = 'var(--accent)'; e.currentTarget.style.color = 'var(--accent)'; }}
+              onMouseLeave={e => { e.currentTarget.style.borderColor = 'var(--border)'; e.currentTarget.style.color = 'var(--fg-2)'; }}>
+              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"
+                className="transition-transform duration-200 group-hover:translate-x-0.5">
+                <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" x2="9" y1="12" y2="12"/></svg>
+              Çıkış
+            </button>
+          </motion.div>
         </div>
 
         {view === 'list' ? (

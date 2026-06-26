@@ -9,7 +9,14 @@ export const SESSION_MAX_AGE = 60 * 60 * 24 * 7; // 7 gün (saniye)
 // Yönetici bilgisi veritabanındaki `settings` koleksiyonunda tek bir dokümanda tutulur:
 //   { _id: 'admin', salt, hash, secret }
 // Şifre düz değil, scrypt ile hash'lenmiş saklanır. `secret` oturum çerezini imzalar.
-interface AdminDoc { _id: string; salt: string; hash: string; secret: string; }
+interface AdminDoc {
+  _id: string; salt: string; hash: string; secret: string;
+  // 2 adımlı doğrulama (e-posta kodu) için geçici alanlar:
+  codeHash?: string; codeExpires?: number; codeAttempts?: number;
+}
+
+const CODE_TTL = 10 * 60 * 1000;   // kod 10 dakika geçerli
+const CODE_MAX_ATTEMPTS = 5;       // 5 yanlış denemeden sonra kod iptal
 
 async function settings() {
   const db = await getDb();
@@ -52,6 +59,18 @@ export async function setupAdmin(password: string): Promise<AdminDoc> {
   return doc;
 }
 
+/** Mevcut yöneticinin şifresini değiştirir. Oturum gizli anahtarı (secret)
+ *  korunur, böylece aktif oturum geçersiz olmaz. */
+export async function changePassword(next: string): Promise<boolean> {
+  const col = await settings();
+  const doc = await col.findOne({ _id: 'admin' });
+  if (!doc) return false;
+  const salt = randomBytes(16).toString('base64url');
+  const hash = hashWith(next, salt);
+  const res = await col.updateOne({ _id: 'admin' }, { $set: { salt, hash } });
+  return res.matchedCount > 0;
+}
+
 /** Verilen şifre yönetici şifresiyle eşleşiyor mu? */
 export async function checkPassword(password: string): Promise<boolean> {
   const doc = await getAdmin();
@@ -59,6 +78,42 @@ export async function checkPassword(password: string): Promise<boolean> {
   const candidate = Buffer.from(hashWith(password, doc.salt));
   const expected = Buffer.from(doc.hash);
   return candidate.length === expected.length && timingSafeEqual(candidate, expected);
+}
+
+// ── 2 adımlı doğrulama: e-posta giriş kodu ──
+
+/** 6 haneli giriş kodu üretir, hash'leyip saklar ve düz halini döndürür
+ *  (e-posta ile gönderilmek üzere). Yönetici yoksa null. */
+export async function createLoginCode(): Promise<string | null> {
+  const doc = await getAdmin();
+  if (!doc) return null;
+  const col = await settings();
+  const code = String(Math.floor(100000 + Math.random() * 900000));
+  const codeHash = hashWith(code, doc.salt);
+  await col.updateOne({ _id: 'admin' }, { $set: { codeHash, codeExpires: Date.now() + CODE_TTL, codeAttempts: 0 } });
+  return code;
+}
+
+/** Girilen kodu doğrular; doğruysa kodu temizler ve true döner. */
+export async function verifyLoginCode(code: string): Promise<boolean> {
+  const col = await settings();
+  const doc = await col.findOne({ _id: 'admin' });
+  if (!doc || !doc.codeHash || !doc.codeExpires) return false;
+
+  const clear = () => col.updateOne({ _id: 'admin' }, { $unset: { codeHash: '', codeExpires: '', codeAttempts: '' } });
+
+  if (Date.now() > doc.codeExpires || (doc.codeAttempts ?? 0) >= CODE_MAX_ATTEMPTS) {
+    await clear();
+    return false;
+  }
+
+  const candidate = Buffer.from(hashWith(code, doc.salt));
+  const expected = Buffer.from(doc.codeHash);
+  const ok = candidate.length === expected.length && timingSafeEqual(candidate, expected);
+
+  if (ok) { await clear(); return true; }
+  await col.updateOne({ _id: 'admin' }, { $inc: { codeAttempts: 1 } });
+  return false;
 }
 
 async function getSecret(): Promise<string | null> {

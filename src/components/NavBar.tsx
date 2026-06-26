@@ -78,9 +78,16 @@ export default function NavBar() {
         <button onClick={onLogoClick} aria-label="Ana sayfa" title="Ana sayfa"
           className="flex flex-shrink-0 mr-2 md:mr-2.5 items-center" style={{ background: 'transparent' }}>
           {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img src="/logo.png" alt="Ömer Faruk Yıldız" width={32} height={32}
-            className="w-8 h-8 rounded-full transition-transform duration-200 hover:scale-105"
-            style={{ border: '1px solid var(--border)' }} />
+          <motion.img src="/logo.png" alt="Ömer Faruk Yıldız" width={32} height={32}
+            className="w-8 h-8 rounded-full"
+            style={{ border: '1px solid var(--border)' }}
+            whileHover={{ scale: 1.08 }}
+            animate={{ boxShadow: [
+              '0 0 0 0 color-mix(in srgb, var(--accent) 45%, transparent)',
+              '0 0 13px 3px color-mix(in srgb, var(--accent) 60%, transparent)',
+              '0 0 0 0 color-mix(in srgb, var(--accent) 45%, transparent)',
+            ] }}
+            transition={{ duration: 2, repeat: Infinity, ease: 'easeInOut' }} />
         </button>
 
         {/* Routes — desktop only (mobile uses the hamburger menu) */}
