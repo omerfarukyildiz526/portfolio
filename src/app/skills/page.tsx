@@ -1,8 +1,9 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { useT } from '@/lib/i18n';
+import { useT, useLang } from '@/lib/i18n';
+import type { SkillsContent } from '@/lib/skills-content';
 
 const stagger = (i: number) => ({
   initial: { opacity: 0, y: 20 },
@@ -103,7 +104,33 @@ function TechGroup({
 
 export default function SkillsPage() {
   const t  = useT();
-  const ts = t.skills;
+  const { lang } = useLang();
+
+  // Düzenlenebilir içerik DB'den gelir; gelene kadar translations'taki statik
+  // değerler kullanılır (sayfa hiçbir zaman boş kalmaz).
+  const [content, setContent] = useState<SkillsContent | null>(null);
+
+  useEffect(() => {
+    let alive = true;
+    fetch('/api/skills', { cache: 'no-store' })
+      .then(r => r.json())
+      .then(d => { if (alive && d?.content) setContent(d.content); })
+      .catch(() => {});
+    return () => { alive = false; };
+  }, []);
+
+  // Statik (pageRoute, pageTag, libCount) translations'tan; düzenlenebilir
+  // alanlar DB'den (varsa) gelir.
+  const live = content?.[lang];
+  const ts = {
+    ...t.skills,
+    pageTitle:        live?.pageTitle        ?? t.skills.pageTitle,
+    pageDesc:         live?.pageDesc         ?? t.skills.pageDesc,
+    sectionMarquee:   live?.sectionMarquee   ?? t.skills.sectionMarquee,
+    sectionStack:     live?.sectionStack     ?? t.skills.sectionStack,
+    responsibilities: live?.responsibilities ?? t.skills.responsibilities,
+    techCards:        live?.techCards        ?? t.skills.techCards,
+  };
 
   return (
     <main className="min-h-screen pt-24 pb-32 px-5 md:px-8">

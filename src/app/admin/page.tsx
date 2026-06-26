@@ -4,12 +4,13 @@ import { useState, useEffect, useCallback, useMemo } from 'react';
 import Link from 'next/link';
 import { motion, AnimatePresence } from 'framer-motion';
 import type { Post, ContentBlock } from '@/lib/posts';
+import type { SkillsContent, SkillsLang } from '@/lib/skills-content';
 import { MD } from '@/components/Markdown';
 
 type Status = 'loading' | 'setup' | 'login' | 'ready' | 'dberror';
 type View = 'list' | 'editor';
 type Tab = 'edit' | 'preview';
-type Section = 'posts' | 'messages';
+type Section = 'posts' | 'messages' | 'skills';
 
 interface Message { id: string; name: string; email: string; message: string; createdAt: string; read: boolean; }
 
@@ -551,7 +552,7 @@ export default function AdminPage() {
           <>
             {/* Bölüm sekmeleri */}
             <div className="flex items-center gap-1 p-1 rounded-xl mb-6 w-fit" style={{ background: 'var(--surface)' }}>
-              {([['posts', 'Yazılar'], ['messages', 'Mesajlar']] as [Section, string][]).map(([s, label]) => (
+              {([['posts', 'Yazılar'], ['messages', 'Mesajlar'], ['skills', 'Donanım']] as [Section, string][]).map(([s, label]) => (
                 <button key={s} onClick={() => setSection(s)}
                   className="font-mono text-[12px] px-4 py-2 rounded-lg transition-colors"
                   style={section === s ? { background: 'var(--bg-card)', color: 'var(--fg)' } : { color: 'var(--fg-3)' }}>
@@ -566,6 +567,8 @@ export default function AdminPage() {
 
             {section === 'messages' ? (
               <MessagesPanel messages={messages} openMsg={openMsg} onOpen={openMessage} onToggleRead={markRead} onDelete={confirmDeleteMessage} />
+            ) : section === 'skills' ? (
+              <SkillsPanel notify={notify} onAuthError={() => setStatus('login')} />
             ) : (
             <>
             {/* Kurtarma: yarım kalmış taslak */}
@@ -931,6 +934,140 @@ function MessagesPanel({ messages, openMsg, onOpen, onToggleRead, onDelete }: {
           </div>
         );
       })}
+    </div>
+  );
+}
+
+// ── Donanım (/skills) içerik editörü ──
+function SkillsPanel({ notify, onAuthError }: { notify: (m: string, t?: 'ok' | 'err') => void; onAuthError: () => void }) {
+  const [content, setContent] = useState<SkillsContent | null>(null);
+  const [lang, setLang] = useState<'tr' | 'en'>('tr');
+  const [saving, setSaving] = useState(false);
+
+  useEffect(() => {
+    (async () => {
+      const res = await fetch('/api/admin/skills', { cache: 'no-store' });
+      if (res.status === 401) return onAuthError();
+      const d = await res.json().catch(() => ({}));
+      if (d.content) setContent(d.content);
+    })();
+  }, [onAuthError]);
+
+  // Aktif dilin içeriğini kısmen günceller.
+  function patchLang(patch: Partial<SkillsLang>) {
+    setContent(c => c && ({ ...c, [lang]: { ...c[lang], ...patch } }));
+  }
+
+  async function save() {
+    if (!content || saving) return;
+    setSaving(true);
+    const res = await fetch('/api/admin/skills', {
+      method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(content),
+    });
+    setSaving(false);
+    if (res.status === 401) return onAuthError();
+    if (res.ok) notify('Donanım içeriği güncellendi.');
+    else { const d = await res.json().catch(() => ({})); notify(d.error || 'Kaydedilemedi.', 'err'); }
+  }
+
+  if (!content) return <p className="body-sm" style={{ color: 'var(--fg-3)' }}>yükleniyor…</p>;
+  const c = content[lang];
+
+  // ── responsibilities (üstlendiklerim) yardımcıları ──
+  const setResp = (rs: SkillsLang['responsibilities']) => patchLang({ responsibilities: rs });
+  const updateResp = (i: number, p: Partial<SkillsLang['responsibilities'][number]>) =>
+    setResp(c.responsibilities.map((r, idx) => idx === i ? { ...r, ...p } : r));
+
+  // ── techCards (alanlara göre) yardımcıları ──
+  const setCards = (cards: SkillsLang['techCards']) => patchLang({ techCards: cards });
+  const updateCard = (i: number, p: Partial<SkillsLang['techCards'][number]>) =>
+    setCards(c.techCards.map((card, idx) => idx === i ? { ...card, ...p } : card));
+  const updateLib = (ci: number, li: number, p: Partial<SkillsLang['techCards'][number]['libs'][number]>) =>
+    updateCard(ci, { libs: c.techCards[ci].libs.map((lib, idx) => idx === li ? { ...lib, ...p } : lib) });
+
+  return (
+    <div className="space-y-6">
+      {/* Dil seçimi + kaydet */}
+      <div className="flex items-center justify-between">
+        <div className="flex items-center gap-1 p-1 rounded-lg" style={{ background: 'var(--surface)' }}>
+          {(['tr', 'en'] as const).map(l => (
+            <button key={l} onClick={() => setLang(l)}
+              className="font-mono text-[11px] px-3 py-1.5 rounded-md uppercase transition-colors"
+              style={lang === l ? { background: 'var(--bg-card)', color: 'var(--fg)' } : { color: 'var(--fg-3)' }}>{l}</button>
+          ))}
+        </div>
+        <button onClick={save} disabled={saving}
+          className="px-4 py-2 rounded-xl font-semibold text-sm transition-opacity hover:opacity-90 disabled:opacity-50"
+          style={{ background: 'var(--accent)', color: '#fff' }}>{saving ? 'Kaydediliyor…' : 'Kaydet'}</button>
+      </div>
+
+      {/* Başlık & açıklama */}
+      <div className="space-y-4 p-4 rounded-xl border" style={{ background: 'var(--bg-card)', borderColor: 'var(--border)' }}>
+        <Field label="Sayfa başlığı"><input value={c.pageTitle} onChange={e => patchLang({ pageTitle: e.target.value })} className="input" /></Field>
+        <Field label="Açıklama"><textarea value={c.pageDesc} onChange={e => patchLang({ pageDesc: e.target.value })} rows={2} className="input" /></Field>
+        <div className="grid grid-cols-2 gap-4">
+          <Field label="Üstlendiklerim başlığı"><input value={c.sectionMarquee} onChange={e => patchLang({ sectionMarquee: e.target.value })} className="input" /></Field>
+          <Field label="Alanlara göre başlığı"><input value={c.sectionStack} onChange={e => patchLang({ sectionStack: e.target.value })} className="input" /></Field>
+        </div>
+      </div>
+
+      {/* Üstlendiklerim (responsibilities) */}
+      <div>
+        <p className="font-mono text-[11px] uppercase tracking-wide mb-3" style={{ color: 'var(--fg-3)' }}>Üstlendiklerim</p>
+        <div className="space-y-3">
+          {c.responsibilities.map((r, i) => (
+            <div key={i} className="p-4 rounded-xl border" style={{ background: 'var(--bg-card)', borderColor: 'var(--border)' }}>
+              <div className="flex items-center gap-2 mb-2">
+                <input value={r.icon} onChange={e => updateResp(i, { icon: e.target.value })} placeholder="API" className="input" style={{ width: 80 }} />
+                <input value={r.title} onChange={e => updateResp(i, { title: e.target.value })} placeholder="Başlık" className="input" />
+                <button type="button" onClick={() => setResp(c.responsibilities.filter((_, idx) => idx !== i))}
+                  className={miniBtn} style={{ color: '#ff5d5d' }} title="Sil">✕</button>
+              </div>
+              <input value={r.tags.join(', ')} onChange={e => updateResp(i, { tags: e.target.value.split(',').map(t => t.trim()).filter(Boolean) })}
+                placeholder="Etiketler (virgülle ayır)" className="input" />
+            </div>
+          ))}
+        </div>
+        <button type="button" onClick={() => setResp([...c.responsibilities, { icon: '', title: '', tags: [] }])}
+          className="mt-3 font-mono text-[11px] px-3 py-1.5 rounded-lg border" style={{ color: 'var(--fg-2)', borderColor: 'var(--border)' }}>+ Üstlenilen ekle</button>
+      </div>
+
+      {/* Alanlara göre (techCards) */}
+      <div>
+        <p className="font-mono text-[11px] uppercase tracking-wide mb-3" style={{ color: 'var(--fg-3)' }}>Alanlara göre</p>
+        <div className="space-y-3">
+          {c.techCards.map((card, ci) => (
+            <div key={ci} className="p-4 rounded-xl border" style={{ background: 'var(--bg-card)', borderColor: 'var(--border)' }}>
+              <div className="flex items-center gap-2 mb-3">
+                <input value={card.title} onChange={e => updateCard(ci, { title: e.target.value })} placeholder="Kart başlığı (örn. Python)" className="input" />
+                <button type="button" onClick={() => setCards(c.techCards.filter((_, idx) => idx !== ci))}
+                  className={miniBtn} style={{ color: '#ff5d5d' }} title="Kartı sil">✕</button>
+              </div>
+              <div className="space-y-2 pl-3" style={{ borderLeft: '2px solid var(--border)' }}>
+                {card.libs.map((lib, li) => (
+                  <div key={li} className="flex items-center gap-2">
+                    <input value={lib.name} onChange={e => updateLib(ci, li, { name: e.target.value })} placeholder="Ad" className="input" style={{ maxWidth: 160 }} />
+                    <input value={lib.sub.join(', ')} onChange={e => updateLib(ci, li, { sub: e.target.value.split(',').map(s => s.trim()).filter(Boolean) })}
+                      placeholder="Alt etiketler (virgülle)" className="input" />
+                    <button type="button" onClick={() => updateCard(ci, { libs: card.libs.filter((_, idx) => idx !== li) })}
+                      className={miniBtn} style={{ color: '#ff5d5d' }} title="Sil">✕</button>
+                  </div>
+                ))}
+                <button type="button" onClick={() => updateCard(ci, { libs: [...card.libs, { name: '', sub: [] }] })}
+                  className="font-mono text-[11px] px-2.5 py-1 rounded-lg border" style={{ color: 'var(--fg-3)', borderColor: 'var(--border)' }}>+ Satır</button>
+              </div>
+            </div>
+          ))}
+        </div>
+        <button type="button" onClick={() => setCards([...c.techCards, { title: '', libs: [] }])}
+          className="mt-3 font-mono text-[11px] px-3 py-1.5 rounded-lg border" style={{ color: 'var(--fg-2)', borderColor: 'var(--border)' }}>+ Kart ekle</button>
+      </div>
+
+      <div className="flex justify-end pt-2">
+        <button onClick={save} disabled={saving}
+          className="px-5 py-2.5 rounded-xl font-semibold text-sm transition-opacity hover:opacity-90 disabled:opacity-50"
+          style={{ background: 'var(--accent)', color: '#fff' }}>{saving ? 'Kaydediliyor…' : 'Kaydet'}</button>
+      </div>
     </div>
   );
 }

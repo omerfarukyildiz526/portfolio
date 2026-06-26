@@ -1,9 +1,59 @@
 import type { Post, ContentBlock } from './posts';
+import type { SkillsContent, SkillsLang } from './skills-content';
 
 const BLOCK_TYPES = ['p', 'h2', 'h3', 'code', 'list', 'note', 'quote', 'image', 'divider'] as const;
 
 function str(v: unknown): string {
   return typeof v === 'string' ? v.trim() : '';
+}
+
+function strList(v: unknown): string[] {
+  return Array.isArray(v) ? v.map(str).filter(Boolean) : [];
+}
+
+// Tek bir dilin donanım içeriğini temizler. Eksik/bozuk alanlar güvenli
+// varsayılanlara düşer; boş başlıklı kart ve madde elenir.
+function parseSkillsLang(input: unknown): SkillsLang {
+  const o = (typeof input === 'object' && input !== null ? input : {}) as Record<string, unknown>;
+
+  const responsibilities = (Array.isArray(o.responsibilities) ? o.responsibilities : [])
+    .map((r) => {
+      const x = (typeof r === 'object' && r !== null ? r : {}) as Record<string, unknown>;
+      return { icon: str(x.icon), title: str(x.title), tags: strList(x.tags) };
+    })
+    .filter((r) => r.title);
+
+  const techCards = (Array.isArray(o.techCards) ? o.techCards : [])
+    .map((c) => {
+      const x = (typeof c === 'object' && c !== null ? c : {}) as Record<string, unknown>;
+      const libs = (Array.isArray(x.libs) ? x.libs : [])
+        .map((l) => {
+          const y = (typeof l === 'object' && l !== null ? l : {}) as Record<string, unknown>;
+          return { name: str(y.name), sub: strList(y.sub) };
+        })
+        .filter((l) => l.name);
+      return { title: str(x.title), libs };
+    })
+    .filter((c) => c.title);
+
+  return {
+    pageTitle:      str(o.pageTitle),
+    pageDesc:       str(o.pageDesc),
+    sectionMarquee: str(o.sectionMarquee),
+    sectionStack:   str(o.sectionStack),
+    responsibilities,
+    techCards,
+  };
+}
+
+/** Gelen JSON'ı temiz bir donanım içeriğine (tr/en) dönüştürür. */
+export function parseSkills(input: unknown): { ok: true; content: SkillsContent } | { ok: false; error: string } {
+  if (typeof input !== 'object' || input === null) return { ok: false, error: 'Geçersiz veri.' };
+  const o = input as Record<string, unknown>;
+  const tr = parseSkillsLang(o.tr);
+  const en = parseSkillsLang(o.en);
+  if (!tr.pageTitle || !en.pageTitle) return { ok: false, error: 'Her iki dil için de başlık zorunlu.' };
+  return { ok: true, content: { tr, en } };
 }
 
 /** Gelen JSON'ı temiz bir Post objesine dönüştürür; geçersizse hata mesajı verir. */
