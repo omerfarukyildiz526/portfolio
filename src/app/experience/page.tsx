@@ -2,7 +2,9 @@
 
 import { motion } from 'framer-motion';
 import { useState } from 'react';
-import { useT } from '@/lib/i18n';
+import { useT, useLang } from '@/lib/i18n';
+import { usePageContent } from '@/lib/use-page-content';
+import { SEED_CONTENT } from '@/lib/site-content';
 
 const ISSUER_LOGOS: Record<string, string> = {
   'Turkcell Geleceği Yazanlar': 'https://gelecegiyazanlar.turkcell.com.tr/logo-night.svg',
@@ -13,26 +15,6 @@ const ISSUER_LOGOS: Record<string, string> = {
 const EXP_META = [
   { id: 1, stack: ['Python', 'C# / .NET', 'SQL Server', 'SAP RFC', 'Blue Prism', 'Selenium'], current: true  },
   { id: 2, stack: ['Python', 'C# / .NET', 'SQL Server', 'Selenium'],                          current: false },
-];
-
-const EDU_META = [
-  { diploma: '/certificates/Diploma.pdf', logo: 'https://www.istinye.edu.tr/sites/default/files/2025-07/isu_logo_tr-1.svg' },
-];
-
-const REF_META = [
-  { linkedin: 'https://www.linkedin.com/in/alperakoguz/' },
-];
-
-const CERTIFICATIONS = [
-  { name: '.NET MVC Fullstack Web Geliştirme Eğitimi', issuer: 'ALT+TAB Kuluçka Merkezi',     date: 'Kas 2025', url: '',  image: '/certificates/alttab-yaz-kampi.jpg' },
-  { name: 'Python 401',                                 issuer: 'Turkcell Geleceği Yazanlar', date: '28 Eki 2025', url: 'https://gelecegiyazanlar.turkcell.com.tr/sertifika/d5d8da13c8c2484aa2efb72058afcc79' },
-  { name: 'Python 301',                                 issuer: 'Turkcell Geleceği Yazanlar', date: '23 Eki 2025', url: 'https://gelecegiyazanlar.turkcell.com.tr/sertifika/435eb150e460417fa48f238aceb37184' },
-  { name: 'Python 201',                                 issuer: 'Turkcell Geleceği Yazanlar', date: '12 Eki 2025', url: 'https://gelecegiyazanlar.turkcell.com.tr/sertifika/2033d1b27e46432da7ad2e86a69a8715' },
-  { name: 'Python 101',                                 issuer: 'Turkcell Geleceği Yazanlar', date: '14 Eyl 2025', url: 'https://gelecegiyazanlar.turkcell.com.tr/sertifika/42e44bf3c3ac4b5888da4b81e23fdb93' },
-  { name: 'A1 Seviye İngilizce',                        issuer: 'BTK Akademi',                date: 'Eyl 2025', url: 'https://www.btkakademi.gov.tr/portal/certificate/validate?certificateId=jK1hKodg0z' },
-  { name: 'API ve API Testi',                           issuer: 'BTK Akademi',                date: 'Ağu 2025', url: 'https://www.btkakademi.gov.tr/portal/certificate/validate?certificateId=nKqhnnge1A' },
-  { name: 'Yeni Başlayanlar için Python Programlama',   issuer: 'BTK Akademi',                date: 'Ağu 2025', url: 'https://www.btkakademi.gov.tr/portal/certificate/validate?certificateId=VP1cggb8p7' },
-  { name: 'Versiyon Kontrolleri: Git ve GitHub',        issuer: 'BTK Akademi',                date: 'Ağu 2025', url: 'https://www.btkakademi.gov.tr/portal/certificate/validate?certificateId=OKMhqaK7Vq' },
 ];
 
 function Lightbox({ src, onClose }: { src: string; onClose: () => void }) {
@@ -101,11 +83,16 @@ const stagger = (i: number) => ({
 export default function ExperiencePage() {
   const [lightbox, setLightbox] = useState<string | null>(null);
   const t  = useT();
-  const te = t.experience;
+  const { lang } = useLang();
+  // Düzenlenebilir alanlar content'ten (yüklenene kadar seed); çeviriye özel
+  // alanlar (activeBadge, viewDiploma, verify, pageRoute…) t.experience'tan.
+  const ec = usePageContent('experience') ?? SEED_CONTENT.experience[lang];
+  const te = { ...t.experience, ...ec };
 
-  const experience = te.experience.map((exp, i) => ({ ...exp, ...EXP_META[i] }));
-  const education  = te.education.map((edu, i)  => ({ ...edu, ...EDU_META[i]  }));
-  const references = te.references.map((ref, i)  => ({ ...ref, ...REF_META[i]  }));
+  const experience    = te.experience.map((exp, i) => ({ ...exp, ...(EXP_META[i] ?? { id: i, stack: [] as string[], current: false }) }));
+  const education      = te.education;
+  const references     = te.references;
+  const certifications = te.certifications;
 
   return (
     <>
@@ -325,7 +312,7 @@ export default function ExperiencePage() {
             <p className="label mb-8">{te.sectionCert}</p>
 
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-              {CERTIFICATIONS.map((cert, i) => (
+              {certifications.map((cert, i) => (
                 <motion.div
                   key={i} {...stagger(i)}
                   className="card p-5 group"
@@ -358,7 +345,7 @@ export default function ExperiencePage() {
                     </a>
                   ) : cert.image ? (
                     <button
-                      onClick={() => setLightbox(cert.image!)}
+                      onClick={() => setLightbox(cert.image)}
                       className="inline-flex items-center gap-1.5 font-mono text-[11px] transition-opacity hover:opacity-100 mt-1"
                       style={{ color: 'var(--accent)', opacity: 0.7 }}
                     >

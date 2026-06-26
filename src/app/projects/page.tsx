@@ -3,10 +3,12 @@
 import { motion } from 'framer-motion';
 import Projects from '@/components/Projects';
 import { useT } from '@/lib/i18n';
+import { usePageContent } from '@/lib/use-page-content';
 
 export default function ProjectsPage() {
   const t  = useT();
-  const tp = t.projects;
+  const live = usePageContent('projects');
+  const tp = { ...t.projects, ...(live ?? {}) };
 
   return (
     <main className="min-h-screen pt-24 pb-32 px-5 md:px-8">

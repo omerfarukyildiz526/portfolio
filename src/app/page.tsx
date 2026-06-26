@@ -4,6 +4,7 @@ import { motion, useMotionValue, useSpring, AnimatePresence } from 'framer-motio
 import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { useT } from '@/lib/i18n';
+import { usePageContent } from '@/lib/use-page-content';
 
 const fade = (delay = 0) => ({
   initial:    { opacity: 0, y: 18 },
@@ -193,7 +194,12 @@ function EndpointCard({
 
 export default function HomePage() {
   const t  = useT();
-  const th = t.home;
+  const live = usePageContent('home');
+  const th = {
+    ...t.home,
+    ...(live ?? {}),
+    endpoints: { ...t.home.endpoints, ...(live?.endpoints ?? {}) },
+  };
 
   return (
     <main className="min-h-screen flex flex-col items-center justify-center px-5 md:px-8 pt-28 pb-24">

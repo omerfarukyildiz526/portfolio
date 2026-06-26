@@ -5,6 +5,7 @@ import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 import rehypeRaw from 'rehype-raw';
 import type { Components } from 'react-markdown';
+import Loader from './Loader';
 
 // ─── Resolve relative image/link paths to raw GitHub URLs ─────────────────────
 function resolveGithubUrl(src: string | undefined, branch: string, repoPath: string): string {
@@ -307,12 +308,7 @@ export default function GithubViewer({ repoPath }: { repoPath: string }) {
   };
 
   // ── Render ─────────────────────────────────────────────────────────────────
-  if (loading) return (
-    <div className="flex flex-col items-center justify-center h-full gap-4" style={{ opacity: 0.3 }}>
-      <div className="w-8 h-8 border-2 border-current border-t-transparent rounded-full animate-spin" />
-      <span className="text-[10px] font-mono uppercase tracking-[0.3em]">README yükleniyor…</span>
-    </div>
-  );
+  if (loading) return <Loader route="README.md" className="h-full py-20" />;
 
   if (notFound) return (
     <div className="flex flex-col items-center justify-center h-full gap-3" style={{ opacity: 0.4 }}>

@@ -5,12 +5,27 @@ import Link from 'next/link';
 import { motion, AnimatePresence } from 'framer-motion';
 import type { Post, ContentBlock } from '@/lib/posts';
 import type { SkillsContent, SkillsLang } from '@/lib/skills-content';
+import type { SiteContent, PageKey, HomeLang, ExperienceLang, ContactLang, ProjectsLang } from '@/lib/site-content';
 import { MD } from '@/components/Markdown';
+import Loader from '@/components/Loader';
 
 type Status = 'loading' | 'setup' | 'login' | 'ready' | 'dberror';
 type View = 'list' | 'editor';
 type Tab = 'edit' | 'preview';
-type Section = 'posts' | 'messages' | 'skills';
+type Section = 'home' | 'experience' | 'skills' | 'projects' | 'posts' | 'contact' | 'messages';
+
+// Tek satırda birleşik sekmeler — istenen sıra.
+const SECTIONS: [Section, string][] = [
+  ['home',       'Ana Sayfa'],
+  ['experience', 'Deneyim'],
+  ['skills',     'Donanım'],
+  ['projects',   'Projeler'],
+  ['posts',      'Yazılar'],
+  ['contact',    'İletişim'],
+  ['messages',   'Mesajlar'],
+];
+// Sayfa editörü kullanan bölümler.
+const PAGE_SECTIONS: Section[] = ['home', 'experience', 'contact', 'projects'];
 
 interface Message { id: string; name: string; email: string; message: string; createdAt: string; read: boolean; }
 
@@ -103,7 +118,7 @@ export default function AdminPage() {
   const [loginError, setLoginError] = useState('');
 
   const [posts, setPosts] = useState<Post[]>([]);
-  const [section, setSection] = useState<Section>('posts');
+  const [section, setSection] = useState<Section>('home');
   const [messages, setMessages] = useState<Message[]>([]);
   const [unread, setUnread] = useState(0);
   const [openMsg, setOpenMsg] = useState<string | null>(null);
@@ -395,8 +410,8 @@ export default function AdminPage() {
 
   // ════════════════════════ RENDER ════════════════════════
   if (status === 'loading') {
-    return <main className="min-h-screen flex items-center justify-center" style={{ color: 'var(--fg-3)' }}>
-      <span className="font-mono text-sm">yükleniyor…</span>
+    return <main className="min-h-screen flex items-center justify-center">
+      <Loader route="/admin" />
     </main>;
   }
 
@@ -532,7 +547,11 @@ export default function AdminPage() {
               <span className="method-get">ADMIN</span>
               <span className="font-mono text-[12px]" style={{ color: 'var(--fg-3)' }}>/admin</span>
             </div>
-            <h1 className="display-lg" style={{ color: 'var(--fg)' }}>PANEL.</h1>
+            <h1 className="display-lg" style={{ color: 'var(--fg)' }}>CONTROL.</h1>
+            <p className="font-mono text-[12px] mt-2" style={{ color: 'var(--fg-3)' }}>
+              Selam patron.{' '}
+              <span style={{ color: 'var(--accent)' }}>// bir şeyi bozarsan, onu da yine sen düzeltirsin 🫡</span>
+            </p>
           </div>
           <motion.button onClick={logout}
             initial={{ opacity: 0, rotateY: -90 }} animate={{ opacity: 1, rotateY: 0 }}
@@ -550,11 +569,11 @@ export default function AdminPage() {
 
         {view === 'list' ? (
           <>
-            {/* Bölüm sekmeleri */}
-            <div className="flex items-center gap-1 p-1 rounded-xl mb-6 w-fit" style={{ background: 'var(--surface)' }}>
-              {([['posts', 'Yazılar'], ['messages', 'Mesajlar'], ['skills', 'Donanım']] as [Section, string][]).map(([s, label]) => (
+            {/* Bölüm sekmeleri — tek satırda birleşik */}
+            <div className="flex flex-wrap items-center gap-1 p-1 rounded-xl mb-6" style={{ background: 'var(--surface)' }}>
+              {SECTIONS.map(([s, label]) => (
                 <button key={s} onClick={() => setSection(s)}
-                  className="font-mono text-[12px] px-4 py-2 rounded-lg transition-colors"
+                  className="font-mono text-[12px] px-3.5 py-2 rounded-lg transition-colors"
                   style={section === s ? { background: 'var(--bg-card)', color: 'var(--fg)' } : { color: 'var(--fg-3)' }}>
                   {label}
                   {s === 'messages' && unread > 0 && (
@@ -569,6 +588,8 @@ export default function AdminPage() {
               <MessagesPanel messages={messages} openMsg={openMsg} onOpen={openMessage} onToggleRead={markRead} onDelete={confirmDeleteMessage} />
             ) : section === 'skills' ? (
               <SkillsPanel notify={notify} onAuthError={() => setStatus('login')} />
+            ) : PAGE_SECTIONS.includes(section) ? (
+              <PagesPanel page={section as PageKey} notify={notify} onAuthError={() => setStatus('login')} />
             ) : (
             <>
             {/* Kurtarma: yarım kalmış taslak */}
@@ -970,7 +991,7 @@ function SkillsPanel({ notify, onAuthError }: { notify: (m: string, t?: 'ok' | '
     else { const d = await res.json().catch(() => ({})); notify(d.error || 'Kaydedilemedi.', 'err'); }
   }
 
-  if (!content) return <p className="body-sm" style={{ color: 'var(--fg-3)' }}>yükleniyor…</p>;
+  if (!content) return <Loader route="/api/admin/skills" className="py-16" />;
   const c = content[lang];
 
   // ── responsibilities (üstlendiklerim) yardımcıları ──
@@ -1067,6 +1088,342 @@ function SkillsPanel({ notify, onAuthError }: { notify: (m: string, t?: 'ok' | '
         <button onClick={save} disabled={saving}
           className="px-5 py-2.5 rounded-xl font-semibold text-sm transition-opacity hover:opacity-90 disabled:opacity-50"
           style={{ background: 'var(--accent)', color: '#fff' }}>{saving ? 'Kaydediliyor…' : 'Kaydet'}</button>
+      </div>
+    </div>
+  );
+}
+
+// ── Sayfa içerik editörü (home / experience / contact / projects) ──
+type Up = <T>(mut: (o: T) => void) => void;
+
+function PagesPanel({ page, notify, onAuthError }: { page: PageKey; notify: (m: string, t?: 'ok' | 'err') => void; onAuthError: () => void }) {
+  const [content, setContent] = useState<SiteContent | null>(null);
+  const [lang, setLang] = useState<'tr' | 'en'>('tr');
+  const [saving, setSaving] = useState(false);
+  const [uploading, setUploading] = useState(false);
+
+  useEffect(() => {
+    (async () => {
+      const res = await fetch('/api/admin/site-content', { cache: 'no-store' });
+      if (res.status === 401) return onAuthError();
+      const d = await res.json().catch(() => ({}));
+      if (d.content) setContent(d.content);
+    })();
+  }, [onAuthError]);
+
+  const up: Up = (mut) => setContent(c => {
+    if (!c) return c;
+    const next = structuredClone(c);
+    mut((next[page] as Record<'tr' | 'en', unknown>)[lang] as never);
+    return next;
+  });
+
+  // Dilden bağımsız alanlar (örn. proje repoları) için her iki dile yaz.
+  const upBoth: Up = (mut) => setContent(c => {
+    if (!c) return c;
+    const next = structuredClone(c);
+    const slice = next[page] as Record<'tr' | 'en', unknown>;
+    mut(slice.tr as never);
+    mut(slice.en as never);
+    return next;
+  });
+
+  async function uploadFile(file: File): Promise<string | null> {
+    setUploading(true);
+    try {
+      const fd = new FormData();
+      fd.append('file', file);
+      const res = await fetch('/api/admin/upload', { method: 'POST', body: fd });
+      if (res.status === 401) { onAuthError(); return null; }
+      const d = await res.json().catch(() => ({}));
+      if (!res.ok) { notify(d.error || 'Yükleme başarısız.', 'err'); return null; }
+      notify('Yüklendi.');
+      return d.url as string;
+    } catch {
+      notify('Yükleme başarısız.', 'err');
+      return null;
+    } finally {
+      setUploading(false);
+    }
+  }
+
+  async function save() {
+    if (!content || saving) return;
+    setSaving(true);
+    const res = await fetch('/api/admin/site-content', {
+      method: 'PUT', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ page, content: content[page] }),
+    });
+    setSaving(false);
+    if (res.status === 401) return onAuthError();
+    if (res.ok) notify('Sayfa güncellendi.');
+    else { const d = await res.json().catch(() => ({})); notify(d.error || 'Kaydedilemedi.', 'err'); }
+  }
+
+  if (!content) return <Loader route="/api/admin/site-content" className="py-16" />;
+  const cur = (content[page] as Record<'tr' | 'en', unknown>)[lang];
+
+  const saveBtn = (
+    <button onClick={save} disabled={saving}
+      className="px-4 py-2 rounded-xl font-semibold text-sm transition-opacity hover:opacity-90 disabled:opacity-50"
+      style={{ background: 'var(--accent)', color: '#fff' }}>{saving ? 'Kaydediliyor…' : 'Kaydet'}</button>
+  );
+
+  return (
+    <div className="space-y-6">
+      {/* Dil + kaydet */}
+      <div className="flex items-center justify-between">
+        <div className="flex items-center gap-1 p-1 rounded-lg" style={{ background: 'var(--surface)' }}>
+          {(['tr', 'en'] as const).map(l => (
+            <button key={l} onClick={() => setLang(l)}
+              className="font-mono text-[11px] px-3 py-1.5 rounded-md uppercase transition-colors"
+              style={lang === l ? { background: 'var(--bg-card)', color: 'var(--fg)' } : { color: 'var(--fg-3)' }}>{l}</button>
+          ))}
+        </div>
+        {saveBtn}
+      </div>
+
+      {page === 'home'       && <HomeEditor       v={cur as HomeLang} up={up} />}
+      {page === 'experience' && <ExperienceEditor v={cur as ExperienceLang} up={up} upload={uploadFile} uploading={uploading} />}
+      {page === 'contact'    && <ContactEditor    v={cur as ContactLang} up={up} />}
+      {page === 'projects'   && <ProjectsEditor   v={cur as ProjectsLang} up={up} upBoth={upBoth} />}
+
+      <div className="flex justify-end pt-1">{saveBtn}</div>
+    </div>
+  );
+}
+
+const card = 'space-y-4 p-4 rounded-xl border';
+const cardStyle = { background: 'var(--bg-card)', borderColor: 'var(--border)' } as const;
+const sectionLabel = 'font-mono text-[11px] uppercase tracking-wide mb-3';
+
+function ProjectsEditor({ v, up, upBoth }: { v: ProjectsLang; up: Up; upBoth: Up }) {
+  return (
+    <div className="space-y-4">
+      <div className={card} style={cardStyle}>
+        <Field label="Başlık"><input value={v.pageTitle} onChange={e => up<ProjectsLang>(o => { o.pageTitle = e.target.value; })} className="input" /></Field>
+        <Field label="Açıklama"><textarea value={v.pageDesc} onChange={e => up<ProjectsLang>(o => { o.pageDesc = e.target.value; })} rows={2} className="input" /></Field>
+      </div>
+      <div className={card} style={cardStyle}>
+        <Field label="Gösterilecek repolar — her satır bir tane (kullanıcı/repo). Boş bırakırsan en son 30 repo otomatik gelir.">
+          <textarea value={v.repos.join('\n')} rows={6} placeholder={'OmerFaruk-YILDIZ/omr\nOmerFaruk-YILDIZ/portfolio'}
+            onChange={e => upBoth<ProjectsLang>(o => { o.repos = e.target.value.split('\n'); })}
+            className="input" style={{ fontFamily: 'var(--font-jetbrains, monospace)' }} />
+        </Field>
+        <p className="font-mono text-[10px]" style={{ color: 'var(--fg-3)' }}>Tam GitHub linki de yapıştırabilirsin; otomatik kullanıcı/repo biçimine indirilir. Bu liste her iki dilde ortaktır.</p>
+      </div>
+    </div>
+  );
+}
+
+function HomeEditor({ v, up }: { v: HomeLang; up: Up }) {
+  const set = (k: keyof HomeLang) => (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) =>
+    up<HomeLang>(o => { (o[k] as string) = e.target.value; });
+  return (
+    <div className="space-y-4">
+      <div className={card} style={cardStyle}>
+        <Field label="Rol"><input value={v.role} onChange={set('role')} className="input" /></Field>
+        <Field label="Durum (status)"><input value={v.status} onChange={set('status')} className="input" /></Field>
+        <Field label="Alt başlık"><textarea value={v.subtitle} onChange={set('subtitle')} rows={2} className="input" /></Field>
+        <Field label="Alt başlık — vurgulu kısım"><input value={v.subtitleAccent} onChange={set('subtitleAccent')} className="input" /></Field>
+        <Field label="Rotalar bölüm etiketi"><input value={v.sectionRoutes} onChange={set('sectionRoutes')} className="input" /></Field>
+        <Field label="Etiketler (virgülle ayır)">
+          <input value={v.tags.join(', ')} onChange={e => up<HomeLang>(o => { o.tags = e.target.value.split(',').map(s => s.trim()).filter(Boolean); })} className="input" />
+        </Field>
+      </div>
+      <div className={card} style={cardStyle}>
+        <p className={sectionLabel} style={{ color: 'var(--fg-3)' }}>Endpoint açıklamaları</p>
+        {(['experience', 'skills', 'projects', 'feed', 'contact'] as const).map(k => (
+          <Field key={k} label={`/${k}`}>
+            <input value={v.endpoints[k]} onChange={e => up<HomeLang>(o => { o.endpoints[k] = e.target.value; })} className="input" />
+          </Field>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+function ContactEditor({ v, up }: { v: ContactLang; up: Up }) {
+  const textFields: [keyof ContactLang, string, boolean?][] = [
+    ['pageTitle', 'Başlık'], ['pageDesc', 'Açıklama', true],
+    ['formName', 'Form — İsim etiketi'], ['formNamePh', 'Form — İsim ipucu'],
+    ['formEmail', 'Form — E-posta etiketi'], ['formEmailPh', 'Form — E-posta ipucu'],
+    ['formMessage', 'Form — Mesaj etiketi'], ['formMessagePh', 'Form — Mesaj ipucu'],
+    ['formReply', 'Yanıt notu'], ['formSend', 'Gönder butonu'], ['formSending', 'Gönderiliyor metni'],
+    ['directLabel', 'Bağlantılar başlığı'], ['successTitle', 'Başarı başlığı'], ['successAnother', 'Yeni mesaj metni'],
+  ];
+  return (
+    <div className="space-y-4">
+      <div className={card} style={cardStyle}>
+        {textFields.map(([k, label, multi]) => (
+          <Field key={k} label={label}>
+            {multi
+              ? <textarea value={v[k] as string} onChange={e => up<ContactLang>(o => { (o[k] as string) = e.target.value; })} rows={2} className="input" />
+              : <input value={v[k] as string} onChange={e => up<ContactLang>(o => { (o[k] as string) = e.target.value; })} className="input" />}
+          </Field>
+        ))}
+      </div>
+      <div>
+        <p className={sectionLabel} style={{ color: 'var(--fg-3)' }}>Sosyal bağlantılar — etiket ikonu belirler (GitHub / LinkedIn / Email)</p>
+        <div className="space-y-3">
+          {v.links.map((lk, i) => (
+            <div key={i} className="p-4 rounded-xl border space-y-2" style={cardStyle}>
+              <div className="flex items-center gap-2">
+                <input value={lk.label} placeholder="Etiket" onChange={e => up<ContactLang>(o => { o.links[i].label = e.target.value; })} className="input" style={{ maxWidth: 150 }} />
+                <input value={lk.handle} placeholder="Görünen ad / kullanıcı" onChange={e => up<ContactLang>(o => { o.links[i].handle = e.target.value; })} className="input" />
+                <button type="button" onClick={() => up<ContactLang>(o => { o.links.splice(i, 1); })} className={miniBtn} style={{ color: '#ff5d5d' }} title="Sil">✕</button>
+              </div>
+              <input value={lk.href} placeholder="https://… veya mailto:…" onChange={e => up<ContactLang>(o => { o.links[i].href = e.target.value; })} className="input" />
+            </div>
+          ))}
+        </div>
+        <button type="button" onClick={() => up<ContactLang>(o => { o.links.push({ label: '', handle: '', href: '' }); })}
+          className="mt-3 font-mono text-[11px] px-3 py-1.5 rounded-lg border" style={{ color: 'var(--fg-2)', borderColor: 'var(--border)' }}>+ Bağlantı ekle</button>
+      </div>
+    </div>
+  );
+}
+
+function ExperienceEditor({ v, up, upload, uploading }: { v: ExperienceLang; up: Up; upload: (f: File) => Promise<string | null>; uploading: boolean }) {
+  return (
+    <div className="space-y-5">
+      <div className={card} style={cardStyle}>
+        <Field label="Başlık"><input value={v.pageTitle} onChange={e => up<ExperienceLang>(o => { o.pageTitle = e.target.value; })} className="input" /></Field>
+        <Field label="Açıklama"><textarea value={v.pageDesc} onChange={e => up<ExperienceLang>(o => { o.pageDesc = e.target.value; })} rows={2} className="input" /></Field>
+        <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+          <Field label="İş etiketi"><input value={v.sectionWork} onChange={e => up<ExperienceLang>(o => { o.sectionWork = e.target.value; })} className="input" /></Field>
+          <Field label="Eğitim etiketi"><input value={v.sectionEdu} onChange={e => up<ExperienceLang>(o => { o.sectionEdu = e.target.value; })} className="input" /></Field>
+          <Field label="Referans etiketi"><input value={v.sectionRef} onChange={e => up<ExperienceLang>(o => { o.sectionRef = e.target.value; })} className="input" /></Field>
+          <Field label="Sertifika etiketi"><input value={v.sectionCert} onChange={e => up<ExperienceLang>(o => { o.sectionCert = e.target.value; })} className="input" /></Field>
+        </div>
+      </div>
+
+      {/* İş deneyimi */}
+      <div>
+        <p className={sectionLabel} style={{ color: 'var(--fg-3)' }}>İş deneyimi</p>
+        <div className="space-y-3">
+          {v.experience.map((job, i) => (
+            <div key={i} className="p-4 rounded-xl border space-y-2" style={cardStyle}>
+              <div className="flex items-center justify-between">
+                <span className="font-mono text-[10px]" style={{ color: 'var(--fg-3)' }}>#{i + 1}</span>
+                <button type="button" onClick={() => up<ExperienceLang>(o => { o.experience.splice(i, 1); })} className={miniBtn} style={{ color: '#ff5d5d' }} title="Sil">✕</button>
+              </div>
+              <div className="grid grid-cols-2 gap-2">
+                <input value={job.company} placeholder="Şirket" onChange={e => up<ExperienceLang>(o => { o.experience[i].company = e.target.value; })} className="input" />
+                <input value={job.role} placeholder="Rol" onChange={e => up<ExperienceLang>(o => { o.experience[i].role = e.target.value; })} className="input" />
+                <input value={job.period} placeholder="Dönem" onChange={e => up<ExperienceLang>(o => { o.experience[i].period = e.target.value; })} className="input" />
+                <input value={job.location} placeholder="Konum" onChange={e => up<ExperienceLang>(o => { o.experience[i].location = e.target.value; })} className="input" />
+                <input value={job.type} placeholder="Tip (Tam Zamanlı…)" onChange={e => up<ExperienceLang>(o => { o.experience[i].type = e.target.value; })} className="input" />
+              </div>
+              <textarea value={job.desc} placeholder="Açıklama" rows={2} onChange={e => up<ExperienceLang>(o => { o.experience[i].desc = e.target.value; })} className="input" />
+              <textarea value={job.highlights.join('\n')} placeholder="Maddeler — her satır bir madde" rows={4}
+                onChange={e => up<ExperienceLang>(o => { o.experience[i].highlights = e.target.value.split('\n'); })} className="input" />
+            </div>
+          ))}
+        </div>
+        <button type="button" onClick={() => up<ExperienceLang>(o => { o.experience.push({ company: '', role: '', period: '', location: '', desc: '', type: '', highlights: [] }); })}
+          className="mt-3 font-mono text-[11px] px-3 py-1.5 rounded-lg border" style={{ color: 'var(--fg-2)', borderColor: 'var(--border)' }}>+ İş ekle</button>
+      </div>
+
+      {/* Eğitim */}
+      <div>
+        <p className={sectionLabel} style={{ color: 'var(--fg-3)' }}>Eğitim</p>
+        <div className="space-y-3">
+          {v.education.map((edu, ei) => (
+            <div key={ei} className="p-4 rounded-xl border space-y-2" style={cardStyle}>
+              <div className="flex items-center justify-between">
+                <span className="font-mono text-[10px]" style={{ color: 'var(--fg-3)' }}>#{ei + 1}</span>
+                <button type="button" onClick={() => up<ExperienceLang>(o => { o.education.splice(ei, 1); })} className={miniBtn} style={{ color: '#ff5d5d' }} title="Sil">✕</button>
+              </div>
+              <div className="grid grid-cols-2 gap-2">
+                <input value={edu.school} placeholder="Okul" onChange={e => up<ExperienceLang>(o => { o.education[ei].school = e.target.value; })} className="input" />
+                <input value={edu.dept} placeholder="Bölüm" onChange={e => up<ExperienceLang>(o => { o.education[ei].dept = e.target.value; })} className="input" />
+                <input value={edu.degree} placeholder="Derece" onChange={e => up<ExperienceLang>(o => { o.education[ei].degree = e.target.value; })} className="input" />
+                <input value={edu.period} placeholder="Dönem" onChange={e => up<ExperienceLang>(o => { o.education[ei].period = e.target.value; })} className="input" />
+              </div>
+              <div className="pl-3 space-y-2" style={{ borderLeft: '2px solid var(--border)' }}>
+                <p className="font-mono text-[10px] uppercase" style={{ color: 'var(--fg-3)' }}>Konular</p>
+                {edu.topics.map((tp, ti) => (
+                  <div key={ti} className="flex items-center gap-2">
+                    <input value={tp.label} placeholder="Başlık" onChange={e => up<ExperienceLang>(o => { o.education[ei].topics[ti].label = e.target.value; })} className="input" style={{ maxWidth: 160 }} />
+                    <input value={tp.items.join(', ')} placeholder="öğeler (virgülle)" onChange={e => up<ExperienceLang>(o => { o.education[ei].topics[ti].items = e.target.value.split(',').map(s => s.trim()).filter(Boolean); })} className="input" />
+                    <button type="button" onClick={() => up<ExperienceLang>(o => { o.education[ei].topics.splice(ti, 1); })} className={miniBtn} style={{ color: '#ff5d5d' }} title="Sil">✕</button>
+                  </div>
+                ))}
+                <button type="button" onClick={() => up<ExperienceLang>(o => { o.education[ei].topics.push({ label: '', items: [] }); })}
+                  className="font-mono text-[11px] px-2.5 py-1 rounded-lg border" style={{ color: 'var(--fg-3)', borderColor: 'var(--border)' }}>+ Konu</button>
+              </div>
+              {/* Diploma + okul logosu */}
+              <div className="flex gap-2">
+                <input value={edu.diploma} placeholder="Diploma adresi (PDF/görsel)" onChange={e => up<ExperienceLang>(o => { o.education[ei].diploma = e.target.value; })} className="input" />
+                <UploadButton uploading={uploading} label="Belge"
+                  onPick={async f => { const url = await upload(f); if (url) up<ExperienceLang>(o => { o.education[ei].diploma = url; }); }} />
+                {edu.diploma && <button type="button" onClick={() => up<ExperienceLang>(o => { o.education[ei].diploma = ''; })} className={miniBtn} style={{ color: '#ff5d5d' }} title="Kaldır">✕</button>}
+              </div>
+              <div className="flex gap-2">
+                <input value={edu.logo} placeholder="Okul logosu adresi (opsiyonel)" onChange={e => up<ExperienceLang>(o => { o.education[ei].logo = e.target.value; })} className="input" />
+                <UploadButton uploading={uploading} label="Logo"
+                  onPick={async f => { const url = await upload(f); if (url) up<ExperienceLang>(o => { o.education[ei].logo = url; }); }} />
+              </div>
+            </div>
+          ))}
+        </div>
+        <button type="button" onClick={() => up<ExperienceLang>(o => { o.education.push({ school: '', dept: '', degree: '', period: '', topics: [], diploma: '', logo: '' }); })}
+          className="mt-3 font-mono text-[11px] px-3 py-1.5 rounded-lg border" style={{ color: 'var(--fg-2)', borderColor: 'var(--border)' }}>+ Eğitim ekle</button>
+      </div>
+
+      {/* Referanslar */}
+      <div>
+        <p className={sectionLabel} style={{ color: 'var(--fg-3)' }}>Referanslar</p>
+        <div className="space-y-3">
+          {v.references.map((rf, i) => (
+            <div key={i} className="p-4 rounded-xl border space-y-2" style={cardStyle}>
+              <div className="flex items-center justify-between">
+                <span className="font-mono text-[10px]" style={{ color: 'var(--fg-3)' }}>#{i + 1}</span>
+                <button type="button" onClick={() => up<ExperienceLang>(o => { o.references.splice(i, 1); })} className={miniBtn} style={{ color: '#ff5d5d' }} title="Sil">✕</button>
+              </div>
+              <div className="grid grid-cols-2 gap-2">
+                <input value={rf.name} placeholder="İsim" onChange={e => up<ExperienceLang>(o => { o.references[i].name = e.target.value; })} className="input" />
+                <input value={rf.title} placeholder="Ünvan" onChange={e => up<ExperienceLang>(o => { o.references[i].title = e.target.value; })} className="input" />
+                <input value={rf.company} placeholder="Kurum" onChange={e => up<ExperienceLang>(o => { o.references[i].company = e.target.value; })} className="input" />
+                <input value={rf.relation} placeholder="İlişki (Akademik Referans…)" onChange={e => up<ExperienceLang>(o => { o.references[i].relation = e.target.value; })} className="input" />
+                <input value={rf.contact} placeholder="İletişim (e-posta)" onChange={e => up<ExperienceLang>(o => { o.references[i].contact = e.target.value; })} className="input" />
+              </div>
+              <input value={rf.linkedin} placeholder="LinkedIn adresi (opsiyonel)" onChange={e => up<ExperienceLang>(o => { o.references[i].linkedin = e.target.value; })} className="input" />
+            </div>
+          ))}
+        </div>
+        <button type="button" onClick={() => up<ExperienceLang>(o => { o.references.push({ name: '', title: '', company: '', relation: '', contact: '', linkedin: '' }); })}
+          className="mt-3 font-mono text-[11px] px-3 py-1.5 rounded-lg border" style={{ color: 'var(--fg-2)', borderColor: 'var(--border)' }}>+ Referans ekle</button>
+      </div>
+
+      {/* Sertifikalar */}
+      <div>
+        <p className={sectionLabel} style={{ color: 'var(--fg-3)' }}>Sertifikalar</p>
+        <div className="space-y-3">
+          {v.certifications.map((cz, i) => (
+            <div key={i} className="p-4 rounded-xl border space-y-2" style={cardStyle}>
+              <div className="flex items-center justify-between">
+                <span className="font-mono text-[10px]" style={{ color: 'var(--fg-3)' }}>#{i + 1}</span>
+                <button type="button" onClick={() => up<ExperienceLang>(o => { o.certifications.splice(i, 1); })} className={miniBtn} style={{ color: '#ff5d5d' }} title="Sil">✕</button>
+              </div>
+              <input value={cz.name} placeholder="Sertifika adı" onChange={e => up<ExperienceLang>(o => { o.certifications[i].name = e.target.value; })} className="input" />
+              <div className="grid grid-cols-2 gap-2">
+                <input value={cz.issuer} placeholder="Kurum" onChange={e => up<ExperienceLang>(o => { o.certifications[i].issuer = e.target.value; })} className="input" />
+                <input value={cz.date} placeholder="Tarih (Eyl 2025)" onChange={e => up<ExperienceLang>(o => { o.certifications[i].date = e.target.value; })} className="input" />
+              </div>
+              <input value={cz.url} placeholder="Doğrulama linki (opsiyonel)" onChange={e => up<ExperienceLang>(o => { o.certifications[i].url = e.target.value; })} className="input" />
+              <div className="flex gap-2">
+                <input value={cz.image} placeholder="Belge görseli adresi (linki yoksa)" onChange={e => up<ExperienceLang>(o => { o.certifications[i].image = e.target.value; })} className="input" />
+                <UploadButton uploading={uploading} label="Belge"
+                  onPick={async f => { const url = await upload(f); if (url) up<ExperienceLang>(o => { o.certifications[i].image = url; }); }} />
+                {cz.image && <button type="button" onClick={() => up<ExperienceLang>(o => { o.certifications[i].image = ''; })} className={miniBtn} style={{ color: '#ff5d5d' }} title="Kaldır">✕</button>}
+              </div>
+            </div>
+          ))}
+        </div>
+        <button type="button" onClick={() => up<ExperienceLang>(o => { o.certifications.push({ name: '', issuer: '', date: '', url: '', image: '' }); })}
+          className="mt-3 font-mono text-[11px] px-3 py-1.5 rounded-lg border" style={{ color: 'var(--fg-2)', borderColor: 'var(--border)' }}>+ Sertifika ekle</button>
       </div>
     </div>
   );

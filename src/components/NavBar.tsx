@@ -1,10 +1,10 @@
 'use client';
 
 import Link from 'next/link';
-import { usePathname } from 'next/navigation';
+import { usePathname, useRouter } from 'next/navigation';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useTheme } from 'next-themes';
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { useLang } from '@/lib/i18n';
 
 const ROUTES = [
@@ -18,11 +18,27 @@ const ROUTES = [
 
 export default function NavBar() {
   const pathname = usePathname();
+  const router = useRouter();
   const { theme, setTheme } = useTheme();
   const { lang, setLang } = useLang();
   const [mounted, setMounted] = useState(false);
   const [now, setNow] = useState<Date | null>(null);
   const [menuOpen, setMenuOpen] = useState(false);
+
+  // Logo: tek tık → ana sayfa, çift tık → gizli panel girişi.
+  const logoTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const onLogoClick = () => {
+    if (logoTimer.current) {
+      clearTimeout(logoTimer.current);
+      logoTimer.current = null;
+      router.push('/admin');
+    } else {
+      logoTimer.current = setTimeout(() => {
+        logoTimer.current = null;
+        router.push('/');
+      }, 240);
+    }
+  };
 
   useEffect(() => setMounted(true), []);
 
@@ -58,13 +74,14 @@ export default function NavBar() {
     >
       <div className="max-w-[1400px] mx-auto h-full px-3 md:px-8 flex items-center gap-1">
 
-        {/* Brand logo — desktop only, links home */}
-        <Link href="/" aria-label="Ana sayfa" className="hidden md:flex flex-shrink-0 mr-2.5 items-center">
+        {/* Brand logo — tüm ekranlar. Tek tık: ana sayfa · çift tık: panel */}
+        <button onClick={onLogoClick} aria-label="Ana sayfa" title="Ana sayfa"
+          className="flex flex-shrink-0 mr-2 md:mr-2.5 items-center" style={{ background: 'transparent' }}>
           {/* eslint-disable-next-line @next/next/no-img-element */}
           <img src="/logo.png" alt="Ömer Faruk Yıldız" width={32} height={32}
             className="w-8 h-8 rounded-full transition-transform duration-200 hover:scale-105"
             style={{ border: '1px solid var(--border)' }} />
-        </Link>
+        </button>
 
         {/* Routes — desktop only (mobile uses the hamburger menu) */}
         <div className="relative flex-1 min-w-0">

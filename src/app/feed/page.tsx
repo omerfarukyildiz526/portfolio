@@ -1,11 +1,11 @@
 'use client';
 
 import { useState, useCallback, useRef, useEffect } from 'react';
-import Link from 'next/link';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Post, ContentBlock } from '@/lib/posts';
 import { useLang } from '@/lib/i18n';
 import { MD } from '@/components/Markdown';
+import Loader from '@/components/Loader';
 
 function CodeBlock({ block, index }: { block: ContentBlock; index: number }) {
   const [copied, setCopied] = useState(false);
@@ -102,6 +102,7 @@ const slideVariants = {
 export default function FeedPage() {
   const { lang } = useLang();
   const [posts,     setPosts]     = useState<Post[]>([]);
+  const [loading,   setLoading]   = useState(true);
   const [selected,  setSelected]  = useState<Post | null>(null);
   const [progress,  setProgress]  = useState(0);
   const [direction, setDirection] = useState(0);
@@ -111,7 +112,8 @@ export default function FeedPage() {
     fetch('/api/posts', { cache: 'no-store' })
       .then(r => r.json())
       .then(d => setPosts(d.posts ?? []))
-      .catch(() => setPosts([]));
+      .catch(() => setPosts([]))
+      .finally(() => setLoading(false));
   }, []);
 
   const currentIndex = selected ? posts.findIndex(p => p.slug === selected.slug) : -1;
@@ -142,26 +144,6 @@ export default function FeedPage() {
     <main className="min-h-screen pt-24 pb-32 px-5 md:px-8">
       <div className="max-w-3xl mx-auto relative">
 
-        <motion.div
-          initial={{ opacity: 0, y: -8 }} animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.2, duration: 0.5, ease: [0.23, 1, 0.32, 1] }}
-          className="absolute top-0 right-0 z-10"
-        >
-          <Link href="/admin"
-            className="group flex items-center gap-2 font-mono text-[11px] px-3.5 py-2 rounded-full border transition-all duration-200"
-            style={{ background: 'var(--bg-card)', borderColor: 'var(--border)', color: 'var(--fg-2)' }}
-            onMouseEnter={e => { e.currentTarget.style.borderColor = 'var(--accent)'; e.currentTarget.style.color = 'var(--accent)'; }}
-            onMouseLeave={e => { e.currentTarget.style.borderColor = 'var(--border)'; e.currentTarget.style.color = 'var(--fg-2)'; }}
-          >
-            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"
-              className="transition-transform duration-200 group-hover:-translate-y-px">
-              <rect width="18" height="11" x="3" y="11" rx="2" ry="2"/>
-              <path d="M7 11V7a5 5 0 0 1 10 0v4"/>
-            </svg>
-            Giriş
-          </Link>
-        </motion.div>
-
         <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.6, ease: [0.23, 1, 0.32, 1] }} className="mb-16">
           <div className="hidden md:flex items-center gap-2.5 mb-6">
@@ -177,6 +159,16 @@ export default function FeedPage() {
           </p>
         </motion.div>
 
+        {loading ? (
+          <Loader route="/api/feed" />
+        ) : posts.length === 0 ? (
+          /* ── Boş durum ── */
+          <div className="text-center py-16">
+            <p className="font-mono text-[12px]" style={{ color: 'var(--fg-3)' }}>
+              {lang === 'tr' ? '// henüz yazı yok' : '// no posts yet'}
+            </p>
+          </div>
+        ) : (
         <div className="space-y-3">
           {posts.map((post, i) => (
             <motion.button key={post.slug}
@@ -206,6 +198,7 @@ export default function FeedPage() {
             </motion.button>
           ))}
         </div>
+        )}
       </div>
 
       <AnimatePresence>

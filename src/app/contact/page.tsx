@@ -3,6 +3,7 @@
 import { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useT } from '@/lib/i18n';
+import { usePageContent } from '@/lib/use-page-content';
 
 type FormState = 'idle' | 'sending' | 'sent' | 'error';
 
@@ -43,9 +44,16 @@ const CONTACT_LINKS = [
   },
 ];
 
+// İkonlar etikete göre eşlenir (içerikteki bağlantılarda ikon tutulmaz).
+const ICON_BY_LABEL: Record<string, React.ReactNode> =
+  Object.fromEntries(CONTACT_LINKS.map(l => [l.label, l.icon]));
+
 export default function ContactPage() {
   const t  = useT();
-  const tc = t.contact;
+  const live = usePageContent('contact');
+  const tc = { ...t.contact, ...(live ?? {}) };
+  // Sosyal bağlantılar içerikten gelir; yüklenene kadar koddaki varsayılanlar.
+  const links = (live?.links && live.links.length) ? live.links : CONTACT_LINKS;
 
   const [formState, setFormState] = useState<FormState>('idle');
   const [errorMsg, setErrorMsg] = useState('');
@@ -255,9 +263,9 @@ export default function ContactPage() {
           <p className="label mb-5">{tc.directLabel}</p>
 
           <div className="flex flex-col gap-3">
-            {CONTACT_LINKS.map((link, i) => (
+            {links.map((link, i) => (
               <motion.a
-                key={link.label}
+                key={link.label + i}
                 href={link.href}
                 target={link.href.startsWith('mailto') ? undefined : '_blank'}
                 rel="noopener noreferrer"
@@ -270,7 +278,7 @@ export default function ContactPage() {
                 onMouseEnter={e => (e.currentTarget.style.borderColor = 'var(--border-hover)')}
                 onMouseLeave={e => (e.currentTarget.style.borderColor = 'var(--border)')}
               >
-                <span style={{ color: 'var(--fg-3)' }}>{link.icon}</span>
+                <span style={{ color: 'var(--fg-3)' }}>{ICON_BY_LABEL[link.label]}</span>
                 <div className="flex-1">
                   <p className="font-medium text-[14px]" style={{ color: 'var(--fg)' }}>{link.label}</p>
                   <p className="font-mono text-[11px]" style={{ color: 'var(--fg-3)' }}>{link.handle}</p>

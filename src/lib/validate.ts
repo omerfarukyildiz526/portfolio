@@ -1,5 +1,8 @@
 import type { Post, ContentBlock } from './posts';
 import type { SkillsContent, SkillsLang } from './skills-content';
+import type {
+  PageKey, HomeLang, ExperienceLang, ContactLang, ProjectsLang,
+} from './site-content';
 
 const BLOCK_TYPES = ['p', 'h2', 'h3', 'code', 'list', 'note', 'quote', 'image', 'divider'] as const;
 
@@ -44,6 +47,112 @@ function parseSkillsLang(input: unknown): SkillsLang {
     responsibilities,
     techCards,
   };
+}
+
+// ── Sayfa içerikleri (home / experience / contact / projects) ──
+
+function obj(v: unknown): Record<string, unknown> {
+  return (typeof v === 'object' && v !== null ? v : {}) as Record<string, unknown>;
+}
+
+function parseHomeLang(input: unknown): HomeLang {
+  const o = obj(input);
+  const e = obj(o.endpoints);
+  return {
+    role:           str(o.role),
+    status:         str(o.status),
+    subtitle:       str(o.subtitle),
+    subtitleAccent: str(o.subtitleAccent),
+    sectionRoutes:  str(o.sectionRoutes),
+    tags:           strList(o.tags),
+    endpoints: {
+      experience: str(e.experience),
+      skills:     str(e.skills),
+      projects:   str(e.projects),
+      feed:       str(e.feed),
+      contact:    str(e.contact),
+    },
+  };
+}
+
+function parseExperienceLang(input: unknown): ExperienceLang {
+  const o = obj(input);
+  const experience = (Array.isArray(o.experience) ? o.experience : []).map(j => {
+    const x = obj(j);
+    return {
+      company: str(x.company), role: str(x.role), period: str(x.period),
+      location: str(x.location), desc: str(x.desc), type: str(x.type),
+      highlights: strList(x.highlights),
+    };
+  }).filter(j => j.company || j.role);
+  const education = (Array.isArray(o.education) ? o.education : []).map(ed => {
+    const x = obj(ed);
+    const topics = (Array.isArray(x.topics) ? x.topics : []).map(tp => {
+      const y = obj(tp);
+      return { label: str(y.label), items: strList(y.items) };
+    }).filter(t => t.label);
+    return { school: str(x.school), dept: str(x.dept), degree: str(x.degree), period: str(x.period), topics, diploma: str(x.diploma), logo: str(x.logo) };
+  }).filter(e => e.school);
+  const references = (Array.isArray(o.references) ? o.references : []).map(r => {
+    const x = obj(r);
+    return { name: str(x.name), title: str(x.title), company: str(x.company), relation: str(x.relation), contact: str(x.contact), linkedin: str(x.linkedin) };
+  }).filter(r => r.name);
+  const certifications = (Array.isArray(o.certifications) ? o.certifications : []).map(cz => {
+    const x = obj(cz);
+    return { name: str(x.name), issuer: str(x.issuer), date: str(x.date), url: str(x.url), image: str(x.image) };
+  }).filter(c => c.name);
+  return {
+    pageTitle: str(o.pageTitle), pageDesc: str(o.pageDesc),
+    sectionWork: str(o.sectionWork), sectionEdu: str(o.sectionEdu), sectionRef: str(o.sectionRef), sectionCert: str(o.sectionCert),
+    experience, education, references, certifications,
+  };
+}
+
+function parseContactLang(input: unknown): ContactLang {
+  const o = obj(input);
+  const links = (Array.isArray(o.links) ? o.links : []).map(l => {
+    const x = obj(l);
+    return { label: str(x.label), handle: str(x.handle), href: str(x.href) };
+  }).filter(l => l.label);
+  return {
+    pageTitle: str(o.pageTitle), pageDesc: str(o.pageDesc),
+    formName: str(o.formName), formNamePh: str(o.formNamePh),
+    formEmail: str(o.formEmail), formEmailPh: str(o.formEmailPh),
+    formMessage: str(o.formMessage), formMessagePh: str(o.formMessagePh),
+    formReply: str(o.formReply), formSend: str(o.formSend), formSending: str(o.formSending),
+    directLabel: str(o.directLabel), successTitle: str(o.successTitle), successAnother: str(o.successAnother),
+    links,
+  };
+}
+
+function parseProjectsLang(input: unknown): ProjectsLang {
+  const o = obj(input);
+  // "kullanıcı/repo" biçimine indir; geçersiz/boş satırları ele.
+  const repos = strList(o.repos).map(r => r.replace(/^https?:\/\/github\.com\//, '').replace(/\.git$/, '').replace(/^\/+|\/+$/g, ''))
+    .filter(r => /^[^/\s]+\/[^/\s]+$/.test(r));
+  return { pageTitle: str(o.pageTitle), pageDesc: str(o.pageDesc), repos };
+}
+
+const PAGE_PARSERS = {
+  home:       parseHomeLang,
+  experience: parseExperienceLang,
+  contact:    parseContactLang,
+  projects:   parseProjectsLang,
+} as const;
+
+/** Bir sayfanın iki dilli içeriğini temizler. */
+export function parsePageContent(page: PageKey, input: unknown):
+  { ok: true; tr: unknown; en: unknown } | { ok: false; error: string } {
+  const parser = PAGE_PARSERS[page];
+  if (!parser) return { ok: false, error: 'Geçersiz sayfa.' };
+  if (typeof input !== 'object' || input === null) return { ok: false, error: 'Geçersiz veri.' };
+  const o = input as Record<string, unknown>;
+  const tr = parser(o.tr);
+  const en = parser(o.en);
+  if (page !== 'home' && !(tr as { pageTitle?: string }).pageTitle) {
+    return { ok: false, error: 'TR başlık zorunlu.' };
+  }
+  return { ok: true, tr, en };
 }
 
 /** Gelen JSON'ı temiz bir donanım içeriğine (tr/en) dönüştürür. */

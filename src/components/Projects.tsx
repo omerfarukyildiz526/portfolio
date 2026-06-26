@@ -3,6 +3,7 @@
 import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import GithubViewer from './GithubViewer';
+import Loader from './Loader';
 
 const LANG_COLORS: Record<string, string> = {
   Python:     '#0A84FF',
@@ -22,30 +23,35 @@ export default function Projects() {
   const [mobileView, setMobileView] = useState<'list' | 'viewer'>('list');
 
   useEffect(() => {
-    fetch('https://api.github.com/users/OmerFaruk-YILDIZ/repos?sort=updated&per_page=30')
-      .then(r => r.json())
-      .then(data => {
-        if (Array.isArray(data)) {
-          setRepos(data);
-          if (data.length > 0) setSelected(data[0].full_name);
+    (async () => {
+      try {
+        // Panelde seçilmiş repo listesi var mı? (tr/en aynıdır, tr'den oku)
+        const sc = await fetch('/api/site-content', { cache: 'no-store' }).then(r => r.json()).catch(() => null);
+        const curated: string[] = sc?.content?.projects?.tr?.repos ?? [];
+
+        let data: any[] = [];
+        if (curated.length) {
+          const results = await Promise.all(
+            curated.map(full => fetch(`https://api.github.com/repos/${full}`).then(r => r.ok ? r.json() : null).catch(() => null))
+          );
+          data = results.filter(Boolean);
+        } else {
+          const all = await fetch('https://api.github.com/users/OmerFaruk-YILDIZ/repos?sort=updated&per_page=30').then(r => r.json());
+          data = Array.isArray(all) ? all : [];
         }
+
+        setRepos(data);
+        if (data.length > 0) setSelected(data[0].full_name);
+      } catch {
+        // yoksay
+      } finally {
         setLoading(false);
-      })
-      .catch(() => setLoading(false));
+      }
+    })();
   }, []);
 
   if (loading) {
-    return (
-      <div className="flex h-48 items-center justify-center">
-        <div className="flex flex-col items-center gap-3" style={{ color: 'var(--fg-3)' }}>
-          <div
-            className="w-6 h-6 rounded-full border-2 border-t-transparent animate-spin"
-            style={{ borderColor: 'var(--accent)', borderTopColor: 'transparent' }}
-          />
-          <span className="font-mono text-[11px] tracking-wide">Fetching repos…</span>
-        </div>
-      </div>
-    );
+    return <Loader route="/api/projects" />;
   }
 
   const handleSelect = (fullName: string) => {

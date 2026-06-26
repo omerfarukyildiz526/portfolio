@@ -2,9 +2,13 @@ import 'server-only';
 import { MongoClient, Db, Collection } from 'mongodb';
 import type { Post } from './posts';
 import type { SkillsContent } from './skills-content';
+import type { PageKey } from './site-content';
 
 // Donanım içeriği tek bir dokümanda tutulur: { _id: 'singleton', tr, en }
 export type SkillsDoc = { _id: string } & SkillsContent;
+
+// Sayfa içerikleri: sayfa başına bir doküman { _id: 'home'|…, tr, en }
+export type ContentDoc = { _id: PageKey; tr: unknown; en: unknown };
 
 // Bağlantı bilgisi doğrudan kodda — hiçbir ortam değişkeni (env) gerekmez.
 // Böylece Vercel'de ayar yapmadan, deploy ettiğin anda çalışır.
@@ -40,4 +44,9 @@ export async function getPostsCollection(): Promise<Collection<Post>> {
 export async function getSkillsCollection(): Promise<Collection<SkillsDoc>> {
   const db = await getDb();
   return db.collection<SkillsDoc>('skills');
+}
+
+export async function getContentCollection(): Promise<Collection<ContentDoc>> {
+  const db = await getDb();
+  return db.collection<ContentDoc>('content');
 }

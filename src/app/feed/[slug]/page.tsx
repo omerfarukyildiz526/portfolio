@@ -6,6 +6,7 @@ import Link from 'next/link';
 import { motion } from 'framer-motion';
 import { Post, ContentBlock } from '@/lib/posts';
 import { MD } from '@/components/Markdown';
+import Loader from '@/components/Loader';
 
 function Block({ block, index }: { block: ContentBlock; index: number }) {
   const delay = 0.3 + index * 0.04;
@@ -79,8 +80,8 @@ export default function FeedPostPage({ params }: { params: Promise<{ slug: strin
   }, [slug]);
 
   if (post === undefined) {
-    return <main className="min-h-screen flex items-center justify-center" style={{ color: 'var(--fg-3)' }}>
-      <span className="font-mono text-sm">yükleniyor…</span>
+    return <main className="min-h-screen flex items-center justify-center">
+      <Loader route={`/api/feed/${slug}`} />
     </main>;
   }
   if (post === null) notFound();
