@@ -118,6 +118,7 @@ export default function AdminPage() {
   const [loginError, setLoginError] = useState('');
   const [code, setCode] = useState('');           // "şifre" gibi görünen e-posta kodu
   const [verifying, setVerifying] = useState(false);
+  const [sessionLeft, setSessionLeft] = useState(10 * 60); // oturum geri sayımı (saniye)
 
   const [posts, setPosts] = useState<Post[]>([]);
   const [section, setSection] = useState<Section>('home');
@@ -241,23 +242,31 @@ export default function AdminPage() {
   }
 
   // Oturum 10 dk hareketsizlikte düşer; aktifken kayarak uzar.
-  // Her dakika: 10 dk'dır hareket yoksa çıkış yap + kod iste; aksi halde
+  // Saniyede bir kalan süreyi günceller (geri sayım header'da gösterilir).
+  // Süre bitince çıkış yap + kod iste; aktif kullanımda dakikada bir
   // /api/admin/session'a ping atarak çerez süresini tazele (sliding).
   // Sekme kapalıyken interval durur → çerez/jeton 10 dk içinde kendiliğinden ölür.
   useEffect(() => {
     if (status !== 'ready') return;
     const IDLE_MS = 10 * 60 * 1000;
+    setSessionLeft(IDLE_MS / 1000);
     let last = Date.now();
+    let lastPing = Date.now();
     const bump = () => { last = Date.now(); };
     const events: (keyof WindowEventMap)[] = ['mousemove', 'keydown', 'mousedown', 'scroll', 'touchstart'];
     events.forEach(e => window.addEventListener(e, bump, { passive: true }));
     const id = setInterval(() => {
-      if (Date.now() - last > IDLE_MS) { logout(); return; }
-      fetch('/api/admin/session', { cache: 'no-store' })
-        .then(r => r.json())
-        .then(d => { if (d && d.authed === false) showLogin(); })
-        .catch(() => {});
-    }, 60 * 1000);
+      const leftMs = IDLE_MS - (Date.now() - last);
+      if (leftMs <= 0) { setSessionLeft(0); logout(); return; }
+      setSessionLeft(Math.ceil(leftMs / 1000));
+      if (Date.now() - lastPing >= 60 * 1000) {
+        lastPing = Date.now();
+        fetch('/api/admin/session', { cache: 'no-store' })
+          .then(r => r.json())
+          .then(d => { if (d && d.authed === false) showLogin(); })
+          .catch(() => {});
+      }
+    }, 1000);
     return () => { clearInterval(id); events.forEach(e => window.removeEventListener(e, bump)); };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [status]);
@@ -622,6 +631,21 @@ export default function AdminPage() {
             initial={{ opacity: 0, rotateY: -90 }} animate={{ opacity: 1, rotateY: 0 }}
             transition={{ delay: 0.15, duration: 0.55, ease: [0.23, 1, 0.32, 1] }}
             style={{ transformPerspective: 700 }}>
+            {(() => {
+              const warn = sessionLeft <= 60; // son 1 dk → uyarı rengi
+              const mm = String(Math.floor(sessionLeft / 60)).padStart(2, '0');
+              const ss = String(sessionLeft % 60).padStart(2, '0');
+              const col = warn ? '#ff5d5d' : 'var(--fg-3)';
+              return (
+                <span title="Hareketsiz kalırsan oturum bu süre sonunda kapanır"
+                  className="flex items-center gap-1.5 font-mono text-[11px] px-3 py-2 rounded-full border tabular-nums"
+                  style={{ background: 'var(--bg-card)', borderColor: warn ? 'color-mix(in srgb, #ff5d5d 45%, transparent)' : 'var(--border)', color: col }}>
+                  <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                    <circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg>
+                  {mm}:{ss}
+                </span>
+              );
+            })()}
             <button onClick={logout}
               className="group flex items-center gap-2 font-mono text-[11px] px-3.5 py-2 rounded-full border transition-all duration-200"
               style={{ background: 'var(--bg-card)', borderColor: 'var(--border)', color: 'var(--fg-2)' }}
