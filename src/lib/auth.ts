@@ -4,7 +4,10 @@ import { cookies } from 'next/headers';
 import { getDb } from './mongodb';
 
 export const SESSION_COOKIE = 'admin_session';
-export const SESSION_MAX_AGE = 60 * 60 * 24 * 7; // 7 gün (saniye)
+// Oturum 10 dk geçerli. Aktif kullanımda /api/admin/session her çağrıldığında
+// çerez yeniden basılarak süre kayar (sliding). 10 dk hareketsizlikte düşer →
+// sekmeyi kapatıp dönünce yeniden e-posta kodu istenir.
+export const SESSION_MAX_AGE = 10 * 60; // 10 dakika (saniye)
 
 // Yönetici bilgisi veritabanındaki `settings` koleksiyonunda tek bir dokümanda tutulur:
 //   { _id: 'admin', salt, hash, secret }

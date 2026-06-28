@@ -220,10 +220,47 @@ export default function AdminPage() {
     else { const d = await res.json().catch(() => ({})); setLoginError(d.error || 'Kurulum başarısız.'); }
   }
 
+  // Giriş ekranını göster ve arka planda yeni e-posta kodunu gönder
+  // (mount'taki ilk akışla aynı — kandırma: "şifre" alanı aslında koddur).
+  const showLogin = useCallback(async () => {
+    setStatus('login');
+    try {
+      const lr = await fetch('/api/admin/login', { method: 'POST' });
+      const ld = await lr.json().catch(() => ({}));
+      if (lr.ok && !ld.codeRequired) {
+        // SMTP yok → doğrudan giriş (geliştirme).
+        await Promise.all([loadPosts(), loadMessages()]);
+        setStatus('ready');
+      }
+    } catch {}
+  }, [loadPosts, loadMessages]);
+
   async function logout() {
     await fetch('/api/admin/login', { method: 'DELETE' });
-    setStatus('login');
+    await showLogin();
   }
+
+  // Oturum 10 dk hareketsizlikte düşer; aktifken kayarak uzar.
+  // Her dakika: 10 dk'dır hareket yoksa çıkış yap + kod iste; aksi halde
+  // /api/admin/session'a ping atarak çerez süresini tazele (sliding).
+  // Sekme kapalıyken interval durur → çerez/jeton 10 dk içinde kendiliğinden ölür.
+  useEffect(() => {
+    if (status !== 'ready') return;
+    const IDLE_MS = 10 * 60 * 1000;
+    let last = Date.now();
+    const bump = () => { last = Date.now(); };
+    const events: (keyof WindowEventMap)[] = ['mousemove', 'keydown', 'mousedown', 'scroll', 'touchstart'];
+    events.forEach(e => window.addEventListener(e, bump, { passive: true }));
+    const id = setInterval(() => {
+      if (Date.now() - last > IDLE_MS) { logout(); return; }
+      fetch('/api/admin/session', { cache: 'no-store' })
+        .then(r => r.json())
+        .then(d => { if (d && d.authed === false) showLogin(); })
+        .catch(() => {});
+    }, 60 * 1000);
+    return () => { clearInterval(id); events.forEach(e => window.removeEventListener(e, bump)); };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [status]);
 
   // ---- List actions ----
   function newPost() {
