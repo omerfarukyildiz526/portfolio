@@ -72,6 +72,14 @@ body {
   transition: background 0.25s ease, color 0.25s ease;
 }
 
+/* Native butonlar varsayılan ok imleci gösterir; linkler gibi tıklanabilir
+   hissettirmek için etkin butonlarda el imleci kullan. */
+button:not(:disabled),
+[role="button"]:not([aria-disabled="true"]) {
+  cursor: pointer;
+}
+button:disabled { cursor: not-allowed; }
+
 
 /* ─────────────────────────────────────────────────────────────────────────────
    TYPOGRAPHY SYSTEM

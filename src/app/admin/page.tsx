@@ -12,7 +12,7 @@ import Loader from '@/components/Loader';
 type Status = 'loading' | 'setup' | 'login' | 'ready' | 'dberror';
 type View = 'list' | 'editor';
 type Tab = 'edit' | 'preview';
-type Section = 'home' | 'experience' | 'skills' | 'projects' | 'posts' | 'contact' | 'messages';
+type Section = 'home' | 'experience' | 'skills' | 'projects' | 'posts' | 'contact' | 'messages' | 'finance';
 
 // Tek satırda birleşik sekmeler — istenen sıra.
 const SECTIONS: [Section, string][] = [
@@ -23,6 +23,7 @@ const SECTIONS: [Section, string][] = [
   ['posts',      'Yazılar'],
   ['contact',    'İletişim'],
   ['messages',   'Mesajlar'],
+  ['finance',    'Cüzdan'],
 ];
 // Sayfa editörü kullanan bölümler.
 const PAGE_SECTIONS: Section[] = ['home', 'experience', 'contact', 'projects'];
@@ -101,6 +102,12 @@ function slugify(title: string): string {
 
 const LS_KEY = 'admin-draft-v1';
 
+// Giriş ekranı kilidi (istemci tarafı caydırıcı): bu kadar hatalı denemeden
+// sonra giriş kısa süreli kilitlenir. Gerçek brute-force koruması ayrıca
+// sunucu tarafında yapılmalı.
+const MAX_ATTEMPTS = 5;
+const LOCK_SECONDS = 60;
+
 function countWords(p: Post): number {
   let n = 0;
   for (const b of p.content) {
@@ -119,6 +126,9 @@ export default function AdminPage() {
   const [code, setCode] = useState('');           // "şifre" gibi görünen e-posta kodu
   const [verifying, setVerifying] = useState(false);
   const [sessionLeft, setSessionLeft] = useState(10 * 60); // oturum geri sayımı (saniye)
+  const [attempts, setAttempts] = useState(0);    // arka arkaya hatalı kod denemesi
+  const [lockUntil, setLockUntil] = useState(0);  // bu ms zamanına kadar giriş kilitli
+  const [nowTs, setNowTs] = useState(() => Date.now()); // kilit geri sayımı için tikler
 
   const [posts, setPosts] = useState<Post[]>([]);
   const [section, setSection] = useState<Section>('home');
@@ -192,6 +202,7 @@ export default function AdminPage() {
   async function submitCode(e: React.FormEvent) {
     e.preventDefault();
     if (verifying || !code) return;
+    if (lockUntil > Date.now()) return; // kilitliyken denemeyi engelle
     setLoginError('');
     setVerifying(true);
     const res = await fetch('/api/admin/verify', {
@@ -200,11 +211,22 @@ export default function AdminPage() {
     });
     setVerifying(false);
     if (res.ok) {
-      setCode('');
+      setCode(''); setAttempts(0); setLockUntil(0);
       await Promise.all([loadPosts(), loadMessages()]);
       setStatus('ready');
     } else {
-      setLoginError('Şifre hatalı.'); // gerçekte kod hatalı — ama kandırma için
+      // Gerçekte kod hatalı — ama kandırma için "şifre" diyoruz.
+      const next = attempts + 1;
+      setCode('');
+      if (next >= MAX_ATTEMPTS) {
+        setAttempts(0);
+        setLockUntil(Date.now() + LOCK_SECONDS * 1000);
+        setNowTs(Date.now());
+        setLoginError(`Çok fazla hatalı deneme. ${LOCK_SECONDS} sn bekle.`);
+      } else {
+        setAttempts(next);
+        setLoginError(`Şifre hatalı. ${MAX_ATTEMPTS - next} hakkın kaldı.`);
+      }
     }
   }
 
@@ -241,22 +263,18 @@ export default function AdminPage() {
     await showLogin();
   }
 
-  // Oturum 10 dk hareketsizlikte düşer; aktifken kayarak uzar.
+  // Oturum 10 dk sonra kapanır — sabit geri sayım (harekete bakmaz).
   // Saniyede bir kalan süreyi günceller (geri sayım header'da gösterilir).
-  // Süre bitince çıkış yap + kod iste; aktif kullanımda dakikada bir
-  // /api/admin/session'a ping atarak çerez süresini tazele (sliding).
-  // Sekme kapalıyken interval durur → çerez/jeton 10 dk içinde kendiliğinden ölür.
+  // Süre bitince çıkış yap + kod iste; ayrıca dakikada bir /api/admin/session'a
+  // ping atıp sunucu tarafı oturum düşmüşse giriş ekranına dön.
   useEffect(() => {
     if (status !== 'ready') return;
     const IDLE_MS = 10 * 60 * 1000;
+    const expiry = Date.now() + IDLE_MS;
     setSessionLeft(IDLE_MS / 1000);
-    let last = Date.now();
     let lastPing = Date.now();
-    const bump = () => { last = Date.now(); };
-    const events: (keyof WindowEventMap)[] = ['mousemove', 'keydown', 'mousedown', 'scroll', 'touchstart'];
-    events.forEach(e => window.addEventListener(e, bump, { passive: true }));
     const id = setInterval(() => {
-      const leftMs = IDLE_MS - (Date.now() - last);
+      const leftMs = expiry - Date.now();
       if (leftMs <= 0) { setSessionLeft(0); logout(); return; }
       setSessionLeft(Math.ceil(leftMs / 1000));
       if (Date.now() - lastPing >= 60 * 1000) {
@@ -267,9 +285,19 @@ export default function AdminPage() {
           .catch(() => {});
       }
     }, 1000);
-    return () => { clearInterval(id); events.forEach(e => window.removeEventListener(e, bump)); };
+    return () => clearInterval(id);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [status]);
+
+  // Giriş kilitliyken saniyede bir geri sayımı güncelle; süre dolunca dur.
+  useEffect(() => {
+    if (lockUntil <= Date.now()) return;
+    const id = setInterval(() => {
+      setNowTs(Date.now());
+      if (Date.now() >= lockUntil) clearInterval(id);
+    }, 1000);
+    return () => clearInterval(id);
+  }, [lockUntil]);
 
   // ---- List actions ----
   function newPost() {
@@ -537,6 +565,9 @@ export default function AdminPage() {
   }
 
   if (status === 'login') {
+    const lockLeft = Math.max(0, Math.ceil((lockUntil - nowTs) / 1000));
+    const locked = lockLeft > 0;
+    const remaining = Math.max(0, MAX_ATTEMPTS - attempts);
     return (
       <main className="min-h-screen flex items-center justify-center px-5 relative overflow-hidden">
         <div className="pointer-events-none absolute inset-0 flex items-center justify-center">
@@ -581,8 +612,11 @@ export default function AdminPage() {
           <h1 className="display-md mb-1.5" style={{ color: 'var(--fg)' }}>Merhaba Admin 👋</h1>
           <p className="body-sm mb-7" style={{ color: 'var(--fg-3)' }}>Kontrol Merkezi&apos;ne hoş geldin. Giriş için şifreni gir lütfen.</p>
           <div className="relative mb-3">
-            <input type={showPw ? 'text' : 'password'} value={code} onChange={e => setCode(e.target.value)}
-              placeholder="••••••••" autoFocus autoComplete="off" className="input" style={{ paddingRight: 44 }} />
+            <input type={showPw ? 'text' : 'password'} value={code}
+              onChange={e => { setCode(e.target.value); if (loginError) setLoginError(''); }}
+              placeholder="••••••••" autoFocus autoComplete="off" className="input"
+              disabled={locked} enterKeyHint="go" aria-label="Giriş şifresi"
+              aria-invalid={!!loginError} style={{ paddingRight: 44 }} />
             <button type="button" onClick={() => setShowPw(s => !s)} aria-label="Göster/gizle"
               className="absolute right-3 top-1/2 -translate-y-1/2" style={{ color: 'var(--fg-3)', opacity: 0.7 }}>
               {showPw ? (
@@ -592,18 +626,40 @@ export default function AdminPage() {
               )}
             </button>
           </div>
-          {loginError && (
-            <motion.p initial={{ opacity: 0, y: -4 }} animate={{ opacity: 1, y: 0 }}
-              className="body-sm mb-3 flex items-center gap-1.5" style={{ color: '#ff5d5d' }}>
-              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><circle cx="12" cy="12" r="10"/><path d="M12 8v4M12 16h.01"/></svg>
-              {loginError}
-            </motion.p>
+          <div role="alert" aria-live="assertive">
+            {loginError && (
+              <motion.p initial={{ opacity: 0, y: -4 }} animate={{ opacity: 1, y: 0 }}
+                className="body-sm mb-3 flex items-center gap-1.5" style={{ color: '#ff5d5d' }}>
+                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><circle cx="12" cy="12" r="10"/><path d="M12 8v4M12 16h.01"/></svg>
+                {locked ? `Çok fazla hatalı deneme. ${lockLeft} sn sonra tekrar dene.` : loginError}
+              </motion.p>
+            )}
+          </div>
+          {/* Kalan deneme göstergesi — hata yokken ama deneme tükenmeye başlamışken */}
+          {!locked && attempts > 0 && (
+            <div className="flex items-center gap-1.5 mb-3" aria-hidden="true">
+              {Array.from({ length: MAX_ATTEMPTS }).map((_, i) => (
+                <span key={i} className="inline-block w-1.5 h-1.5 rounded-full transition-colors"
+                  style={{ background: i < remaining ? 'var(--accent)' : 'color-mix(in srgb, #ff5d5d 60%, transparent)' }} />
+              ))}
+              <span className="font-mono text-[10px] ml-1" style={{ color: 'var(--fg-3)' }}>{remaining} hak kaldı</span>
+            </div>
           )}
-          <button type="submit" disabled={verifying || !code}
+          <button type="submit" disabled={verifying || !code || locked}
             className="w-full px-4 py-3 rounded-xl font-semibold text-sm transition-all duration-200 hover:opacity-90 active:scale-[0.98] disabled:opacity-50"
-            style={{ background: 'var(--accent)', color: '#fff', boxShadow: '0 8px 24px -8px color-mix(in srgb, var(--accent) 70%, transparent)' }}>
-            {verifying ? 'Giriş yapılıyor…' : 'Giriş yap'}
+            style={{ background: locked ? 'var(--surface)' : 'var(--accent)', color: locked ? 'var(--fg-3)' : '#fff', boxShadow: locked ? 'none' : '0 8px 24px -8px color-mix(in srgb, var(--accent) 70%, transparent)' }}>
+            {locked ? `Kilitli — ${lockLeft}s` : verifying ? 'Giriş yapılıyor…' : 'Giriş yap'}
           </button>
+
+          {/* Görsel imza / durum çubuğu */}
+          <div className="mt-5 pt-4 flex items-center justify-center gap-1.5 font-mono text-[10px]"
+            style={{ borderTop: '1px solid var(--border)', color: 'var(--fg-3)' }}>
+            <motion.span className="inline-block w-1.5 h-1.5 rounded-full"
+              style={{ background: locked ? '#ff5d5d' : '#30D158' }}
+              animate={{ opacity: [1, 0.35, 1] }}
+              transition={{ duration: 1.8, repeat: Infinity, ease: 'easeInOut' }} />
+            {locked ? 'erişim geçici olarak kilitli' : 'güvenli bağlantı · yalnızca yetkili'}
+          </div>
         </motion.form>
       </main>
     );
@@ -632,18 +688,19 @@ export default function AdminPage() {
             transition={{ delay: 0.15, duration: 0.55, ease: [0.23, 1, 0.32, 1] }}
             style={{ transformPerspective: 700 }}>
             {(() => {
-              const warn = sessionLeft <= 60; // son 1 dk → uyarı rengi
+              const warn = sessionLeft <= 60; // son 1 dk → dikkat çekmek için nabız
               const mm = String(Math.floor(sessionLeft / 60)).padStart(2, '0');
               const ss = String(sessionLeft % 60).padStart(2, '0');
-              const col = warn ? '#ff5d5d' : 'var(--fg-3)';
               return (
-                <span title="Hareketsiz kalırsan oturum bu süre sonunda kapanır"
+                <motion.span title="Oturum bu süre sonunda kapanır"
                   className="flex items-center gap-1.5 font-mono text-[11px] px-3 py-2 rounded-full border tabular-nums"
-                  style={{ background: 'var(--bg-card)', borderColor: warn ? 'color-mix(in srgb, #ff5d5d 45%, transparent)' : 'var(--border)', color: col }}>
+                  style={{ background: 'color-mix(in srgb, #ff5d5d 8%, var(--bg-card))', borderColor: 'color-mix(in srgb, #ff5d5d 45%, transparent)', color: '#ff5d5d' }}
+                  animate={warn ? { opacity: [1, 0.45, 1] } : { opacity: 1 }}
+                  transition={warn ? { duration: 1.2, repeat: Infinity, ease: 'easeInOut' } : { duration: 0.2 }}>
                   <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
                     <circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg>
                   {mm}:{ss}
-                </span>
+                </motion.span>
               );
             })()}
             <button onClick={logout}
@@ -678,6 +735,8 @@ export default function AdminPage() {
 
             {section === 'messages' ? (
               <MessagesPanel messages={messages} openMsg={openMsg} onOpen={openMessage} onToggleRead={markRead} onDelete={confirmDeleteMessage} />
+            ) : section === 'finance' ? (
+              <FinancePanel notify={notify} onAuthError={() => setStatus('login')} />
             ) : section === 'skills' ? (
               <SkillsPanel notify={notify} onAuthError={() => setStatus('login')} />
             ) : PAGE_SECTIONS.includes(section) ? (
@@ -1047,6 +1106,405 @@ function MessagesPanel({ messages, openMsg, onOpen, onToggleRead, onDelete }: {
           </div>
         );
       })}
+    </div>
+  );
+}
+
+// ── Cüzdan (/finance) — kişisel varlık takibi ──
+type FinAsset = { price: number; change: number };
+type FinRates = { usd: FinAsset; eur: FinAsset; gold: FinAsset; updated: string };
+type FinHoldings = { usd: number; eur: number; gold: number };
+type FinKey = keyof FinHoldings;
+
+type FinPoint = { d: string; v: number; t?: number };
+type FinHistory = { usd: FinPoint[]; eur: FinPoint[]; gold: FinPoint[] };
+
+const FIN_ASSETS: { key: FinKey; label: string; emoji: string; unit: string; color: string }[] = [
+  { key: 'usd',  label: 'Dolar',      emoji: '💵', unit: 'USD',  color: '#30D158' },
+  { key: 'eur',  label: 'Euro',       emoji: '💶', unit: 'EUR',  color: '#0A84FF' },
+  { key: 'gold', label: 'Gram Altın', emoji: '🪙', unit: 'gram', color: '#E0A422' },
+];
+
+// Dönüştürücü birimleri (TL dahil). Hepsinin TL cinsinden fiyatı var (TL = 1).
+type FinUnit = 'tl' | 'usd' | 'eur' | 'gold';
+const FIN_UNITS: { key: FinUnit; label: string }[] = [
+  { key: 'tl',   label: '₺ TL' },
+  { key: 'usd',  label: '💵 Dolar' },
+  { key: 'eur',  label: '💶 Euro' },
+  { key: 'gold', label: '🪙 Gram Altın' },
+];
+
+const finFmt = (n: number) => n.toLocaleString('tr-TR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+
+// İnteraktif SVG çizgi grafiği: hover crosshair + tooltip, çizilme animasyonu.
+function MiniChart({ points, color, id }: { points: FinPoint[]; color: string; id: string }) {
+  const [hi, setHi] = useState<number | null>(null);
+  if (points.length < 2) {
+    return (
+      <p className="font-mono text-[11px] py-8 text-center" style={{ color: 'var(--fg-3)' }}>
+        Bu aralık için yeterli veri yok — günlük kaydedildikçe birikecek 📈
+      </p>
+    );
+  }
+  const W = 600, H = 170, padX = 6, padTop = 12, padBot = 16;
+  const n = points.length;
+  const vals = points.map(p => p.v);
+  const min = Math.min(...vals), max = Math.max(...vals);
+  const span = max - min || 1;
+  const x = (i: number) => padX + (i / (n - 1)) * (W - 2 * padX);
+  const y = (v: number) => padTop + (1 - (v - min) / span) * (H - padTop - padBot);
+  const line = points.map((p, i) => `${i ? 'L' : 'M'}${x(i).toFixed(1)},${y(p.v).toFixed(1)}`).join(' ');
+  const area = `${line} L${x(n - 1).toFixed(1)},${(H - padBot).toFixed(1)} L${padX},${(H - padBot).toFixed(1)} Z`;
+  const first = points[0].v, last = points[n - 1].v;
+  const up = last >= first;
+  const pct = first ? ((last - first) / first) * 100 : 0;
+  const grid = [0, 0.5, 1].map(t => padTop + t * (H - padTop - padBot));
+  const cur = hi != null ? points[hi] : null;
+  const curLeft = hi != null ? (x(hi) / W) * 100 : 0;
+
+  const onMove = (e: React.MouseEvent | React.TouchEvent) => {
+    const rect = (e.currentTarget as HTMLElement).getBoundingClientRect();
+    const clientX = 'touches' in e ? e.touches[0].clientX : e.clientX;
+    const ratio = Math.min(1, Math.max(0, (clientX - rect.left) / rect.width));
+    setHi(Math.round(ratio * (n - 1)));
+  };
+
+  return (
+    <div>
+      <div className="flex items-baseline justify-between mb-2">
+        <span className="font-mono text-[10px]" style={{ color: 'var(--fg-3)' }}>{points[0].d}</span>
+        <span className="font-mono text-[11px]" style={{ color: up ? '#30D158' : '#ff5d5d' }}>
+          {up ? '▲' : '▼'} {pct >= 0 ? '+' : ''}{pct.toFixed(2)}%
+        </span>
+        <span className="font-mono text-[10px]" style={{ color: 'var(--fg-3)' }}>{points[n - 1].d}</span>
+      </div>
+      <div className="relative" style={{ cursor: 'crosshair' }}
+        onMouseMove={onMove} onMouseLeave={() => setHi(null)} onTouchStart={onMove} onTouchMove={onMove}>
+        {cur && (
+          <div className="absolute z-10 -translate-x-1/2 pointer-events-none px-2 py-1 rounded-lg whitespace-nowrap"
+            style={{ left: `${Math.min(88, Math.max(12, curLeft))}%`, top: -2,
+              background: 'var(--bg-card)', border: '1px solid var(--border)', boxShadow: '0 6px 18px -6px rgba(0,0,0,0.5)' }}>
+            <span className="font-mono text-[10px]" style={{ color: 'var(--fg-3)' }}>{cur.d}</span>
+            <span className="font-mono text-[11px] font-bold ml-1.5" style={{ color: 'var(--fg)' }}>₺{finFmt(cur.v)}</span>
+          </div>
+        )}
+        <svg viewBox={`0 0 ${W} ${H}`} preserveAspectRatio="none" className="w-full block" style={{ height: 170 }}>
+          <defs>
+            <linearGradient id={`fin-grad-${id}`} x1="0" y1="0" x2="0" y2="1">
+              <stop offset="0%" stopColor={color} stopOpacity="0.32" />
+              <stop offset="100%" stopColor={color} stopOpacity="0" />
+            </linearGradient>
+          </defs>
+          {grid.map((gy, i) => (
+            <line key={i} x1={padX} x2={W - padX} y1={gy} y2={gy} stroke="var(--border)" strokeWidth="1" strokeDasharray="3 4" vectorEffect="non-scaling-stroke" />
+          ))}
+          <path d={area} fill={`url(#fin-grad-${id})`} />
+          <motion.path d={line} fill="none" stroke={color} strokeWidth="2" strokeLinejoin="round" strokeLinecap="round"
+            vectorEffect="non-scaling-stroke" initial={{ pathLength: 0 }} animate={{ pathLength: 1 }}
+            transition={{ duration: 0.6, ease: 'easeInOut' }} />
+          {cur && (
+            <line x1={x(hi!)} x2={x(hi!)} y1={padTop} y2={H - padBot} stroke="var(--fg-3)" strokeWidth="1" strokeDasharray="2 3" vectorEffect="non-scaling-stroke" />
+          )}
+          <circle cx={x(n - 1)} cy={y(last)} r="3.5" fill={color} vectorEffect="non-scaling-stroke" />
+          {cur && (
+            <circle cx={x(hi!)} cy={y(cur.v)} r="4.5" fill={color} stroke="var(--bg-card)" strokeWidth="2" vectorEffect="non-scaling-stroke" />
+          )}
+        </svg>
+      </div>
+      <div className="flex items-center justify-between mt-1.5 font-mono text-[10px]" style={{ color: 'var(--fg-3)' }}>
+        <span>en düşük ₺{finFmt(min)}</span>
+        <span style={{ color: 'var(--fg)' }}>şimdi ₺{finFmt(last)}</span>
+        <span>en yüksek ₺{finFmt(max)}</span>
+      </div>
+    </div>
+  );
+}
+
+// Zaman aralıkları. kind: live=anlık birikim, intraday=saat-içi (cron), daily=günlük.
+type FinRange = { key: string; label: string; kind: 'live' | 'intraday' | 'daily'; hours?: number; days?: number };
+const FIN_RANGES: FinRange[] = [
+  { key: 'live', label: 'Canlı',   kind: 'live' },
+  { key: '1s',   label: 'Saatlik', kind: 'intraday', hours: 1 },
+  { key: '1g',   label: 'Günlük',  kind: 'intraday', hours: 24 },
+  { key: '1h',   label: '1 Hafta', kind: 'daily', days: 7 },
+  { key: '1a',   label: '1 Ay',    kind: 'daily', days: 30 },
+  { key: '3a',   label: '3 Ay',    kind: 'daily', days: 90 },
+  { key: '1y',   label: '1 Yıl',   kind: 'daily', days: 365 },
+];
+const FIN_DEFAULT_RANGE = FIN_RANGES.findIndex(r => r.key === '1a');
+
+// Günlük noktaları pencereye göre kırp (tarih 'YYYY-MM-DD' string karşılaştırması).
+function sliceRange(points: FinPoint[], days: number): FinPoint[] {
+  const cutoff = new Date(Date.now() - days * 864e5).toISOString().slice(0, 10);
+  return points.filter(p => p.d >= cutoff);
+}
+
+function FinancePanel({ notify, onAuthError }: { notify: (m: string, t?: 'ok' | 'err') => void; onAuthError: () => void }) {
+  const [rates, setRates] = useState<FinRates | null>(null);
+  const [holdings, setHoldings] = useState<FinHoldings>({ usd: 0, eur: 0, gold: 0 });
+  const [loading, setLoading] = useState(true);
+  const [saving, setSaving] = useState(false);
+  const [open, setOpen] = useState<FinKey | null>(null);     // açık grafik
+  const [range, setRange] = useState(FIN_DEFAULT_RANGE);     // FIN_RANGES indexi (vars. 1 Ay)
+  const [history, setHistory] = useState<FinHistory | null>(null);   // günlük seriler
+  const [intraday, setIntraday] = useState<FinHistory | null>(null); // saat-içi seriler (cron)
+  const [live, setLive] = useState<FinHistory>({ usd: [], eur: [], gold: [] }); // canlı akış tamponu
+  const [convOpen, setConvOpen] = useState(false);          // dönüştürücü açık mı
+  const [convAmt, setConvAmt] = useState('1');
+  const [convFrom, setConvFrom] = useState<FinUnit>('usd');
+  const [convTo, setConvTo] = useState<FinUnit>('tl');
+  const [hidden, setHidden] = useState<boolean>(() => {       // varlıkları gizle (göz)
+    try { return localStorage.getItem('admin-fin-hidden') === '1'; } catch { return false; }
+  });
+
+  const load = useCallback(async () => {
+    const res = await fetch('/api/admin/finance', { cache: 'no-store' });
+    if (res.status === 401) return onAuthError();
+    const d = await res.json().catch(() => ({}));
+    setRates(d.rates ?? null);
+    if (d.holdings) setHoldings(d.holdings);
+    // Canlı akış: gelen fiyatı zaman damgasıyla tampona ekle (son 240 nokta).
+    if (d.rates) {
+      const now = Date.now();
+      const t = new Date(now).toLocaleTimeString('tr-TR', { hour: '2-digit', minute: '2-digit', second: '2-digit' });
+      setLive(prev => {
+        const push = (arr: FinPoint[], v: number) => (v > 0 ? [...arr, { d: t, v, t: now }].slice(-240) : arr);
+        return {
+          usd:  push(prev.usd,  d.rates.usd?.price ?? 0),
+          eur:  push(prev.eur,  d.rates.eur?.price ?? 0),
+          gold: push(prev.gold, d.rates.gold?.price ?? 0),
+        };
+      });
+    }
+    setLoading(false);
+  }, [onAuthError]);
+
+  // İlk yükleme + kurları dakikada bir tazele.
+  useEffect(() => {
+    (async () => { await load(); })();
+    const id = setInterval(() => { load(); }, 60_000);
+    return () => clearInterval(id);
+  }, [load]);
+
+  // Canlı grafik açıkken daha sık (5 sn) çek ki akış görünsün.
+  const liveMode = FIN_RANGES[range].kind === 'live';
+  useEffect(() => {
+    if (!liveMode || open === null) return;
+    const id = setInterval(() => { load(); }, 5_000);
+    return () => clearInterval(id);
+  }, [liveMode, open, load]);
+
+  const toggleHidden = () => setHidden(h => {
+    const next = !h;
+    try { localStorage.setItem('admin-fin-hidden', next ? '1' : '0'); } catch {}
+    return next;
+  });
+
+  // Grafik geçmişini çek (USD/EUR günlük, altın biriken kayıtlar, saat-içi cron verisi).
+  const loadHistory = useCallback(async () => {
+    const res = await fetch('/api/admin/finance/history', { cache: 'no-store' });
+    if (res.status === 401) return onAuthError();
+    const d = await res.json().catch(() => ({}));
+    setHistory({ usd: d.usd ?? [], eur: d.eur ?? [], gold: d.gold ?? [] });
+    const intra = d.intraday ?? {};
+    setIntraday({ usd: intra.usd ?? [], eur: intra.eur ?? [], gold: intra.gold ?? [] });
+  }, [onAuthError]);
+
+  useEffect(() => {
+    (async () => { await loadHistory(); })();
+    const id = setInterval(() => { loadHistory(); }, 90_000); // intraday'i taze tut
+    return () => clearInterval(id);
+  }, [loadHistory]);
+
+  async function save() {
+    if (saving) return;
+    setSaving(true);
+    const res = await fetch('/api/admin/finance', {
+      method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(holdings),
+    });
+    setSaving(false);
+    if (res.status === 401) return onAuthError();
+    if (res.ok) notify('Cüzdan kaydedildi.');
+    else { const d = await res.json().catch(() => ({})); notify(d.error || 'Kaydedilemedi.', 'err'); }
+  }
+
+  if (loading) return <Loader route="/api/admin/finance" className="py-16" />;
+
+  const fmt = (n: number) => n.toLocaleString('tr-TR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+  const priceOf = (k: FinKey) => (rates ? rates[k].price : 0);
+  const valueOf = (k: FinKey) => holdings[k] * priceOf(k);
+  const total = FIN_ASSETS.reduce((s, a) => s + valueOf(a.key), 0);
+
+  // ── Dönüştürücü: her birimin TL fiyatı (TL = 1) ──
+  const unitTL = (u: FinUnit) => (u === 'tl' ? 1 : priceOf(u));
+  const convNum = parseFloat(convAmt) || 0;
+  const convFromTL = unitTL(convFrom), convToTL = unitTL(convTo);
+  const convOk = convFromTL > 0 && convToTL > 0;
+  const convResult = convOk ? (convNum * convFromTL) / convToTL : 0;
+  const convFmt = (n: number) => n.toLocaleString('tr-TR', { minimumFractionDigits: 2, maximumFractionDigits: n !== 0 && Math.abs(n) < 1 ? 6 : 2 });
+  const swapConv = () => { setConvFrom(convTo); setConvTo(convFrom); };
+  const unitLabel = (u: FinUnit) => FIN_UNITS.find(x => x.key === u)?.label ?? u;
+
+  return (
+    <div className="space-y-5">
+      {/* Üst bar: güncelleme + tazele + kaydet */}
+      <div className="flex items-center justify-between gap-3 flex-wrap">
+        <p className="font-mono text-[11px]" style={{ color: 'var(--fg-3)' }}>
+          {rates
+            ? <>Güncellendi: {rates.updated} <span style={{ color: 'var(--accent)' }}>{'// '}canlı</span></>
+            : <span style={{ color: '#ff5d5d' }}>Canlı kur alınamadı — kayıtlı miktarları yine de düzenleyebilirsin.</span>}
+        </p>
+        <div className="flex items-center gap-2">
+          <button onClick={() => setConvOpen(o => !o)}
+            className="font-mono text-[11px] px-3 py-1.5 rounded-lg border transition-colors"
+            style={convOpen
+              ? { color: 'var(--accent)', borderColor: 'color-mix(in srgb, var(--accent) 45%, transparent)', background: 'color-mix(in srgb, var(--accent) 8%, transparent)' }
+              : { color: 'var(--fg-2)', borderColor: 'var(--border)' }}>🔁 Çevir</button>
+          <button onClick={load} className="font-mono text-[11px] px-3 py-1.5 rounded-lg border transition-colors"
+            style={{ color: 'var(--fg-2)', borderColor: 'var(--border)' }}>↻ Tazele</button>
+          <button onClick={save} disabled={saving}
+            className="px-4 py-2 rounded-xl font-semibold text-sm transition-opacity hover:opacity-90 disabled:opacity-50"
+            style={{ background: 'var(--accent)', color: '#fff' }}>{saving ? 'Kaydediliyor…' : 'Kaydet'}</button>
+        </div>
+      </div>
+
+      {/* Dönüştürücü */}
+      <AnimatePresence initial={false}>
+        {convOpen && (
+          <motion.div initial={{ height: 0, opacity: 0 }} animate={{ height: 'auto', opacity: 1 }} exit={{ height: 0, opacity: 0 }}
+            transition={{ duration: 0.25, ease: [0.23, 1, 0.32, 1] }} style={{ overflow: 'hidden' }}>
+            <div className="p-4 rounded-xl border space-y-2.5" style={{ background: 'var(--bg-card)', borderColor: 'var(--border)' }}>
+              <div className="flex items-center gap-2">
+                <input type="number" inputMode="decimal" value={convAmt} onFocus={e => e.target.select()}
+                  onChange={e => setConvAmt(e.target.value)} className="input tabular-nums" style={{ flex: 1, textAlign: 'right' }} />
+                <select value={convFrom} onChange={e => setConvFrom(e.target.value as FinUnit)} className="input" style={{ width: 150 }}>
+                  {FIN_UNITS.map(u => <option key={u.key} value={u.key}>{u.label}</option>)}
+                </select>
+              </div>
+              <div className="flex justify-center">
+                <button type="button" onClick={swapConv} title="Yönü değiştir" className={miniBtn} style={{ color: 'var(--fg-2)' }}>⇅</button>
+              </div>
+              <div className="flex items-center gap-2">
+                <div className="input tabular-nums flex items-center justify-end font-bold" style={{ flex: 1, color: 'var(--fg)' }}>
+                  {convOk ? convFmt(convResult) : '—'}
+                </div>
+                <select value={convTo} onChange={e => setConvTo(e.target.value as FinUnit)} className="input" style={{ width: 150 }}>
+                  {FIN_UNITS.map(u => <option key={u.key} value={u.key}>{u.label}</option>)}
+                </select>
+              </div>
+              <p className="font-mono text-[11px] text-center pt-0.5" style={{ color: 'var(--fg-3)' }}>
+                {convOk
+                  ? <>{convFmt(convNum)} {unitLabel(convFrom)} = <span style={{ color: 'var(--fg)' }}>{convFmt(convResult)} {unitLabel(convTo)}</span></>
+                  : 'Canlı kur bekleniyor…'}
+              </p>
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      {/* Toplam varlık */}
+      <div className="p-6 rounded-2xl border relative overflow-hidden" style={{ background: 'var(--bg-card)', borderColor: 'var(--border)' }}>
+        <div className="pointer-events-none absolute -right-10 -top-10 w-44 h-44 rounded-full opacity-[0.12] blur-2xl" style={{ background: 'var(--accent)' }} />
+        <button onClick={toggleHidden} title={hidden ? 'Varlıkları göster' : 'Varlıkları gizle'}
+          aria-label={hidden ? 'Varlıkları göster' : 'Varlıkları gizle'}
+          className="absolute right-4 top-4 w-9 h-9 rounded-xl flex items-center justify-center text-lg transition-colors"
+          style={{ background: 'var(--surface)', border: '1px solid var(--border)' }}>
+          {hidden ? '🙈' : '👁️'}
+        </button>
+        <p className="font-mono text-[11px] uppercase tracking-widest mb-2" style={{ color: 'var(--fg-3)' }}>Toplam Varlık</p>
+        <p className="display-lg tabular-nums" style={{ color: 'var(--fg)' }}>₺{hidden ? '••••••' : fmt(total)}</p>
+      </div>
+
+      {/* Varlık satırları — başlığa basınca grafik açılır */}
+      <div className="space-y-3">
+        {FIN_ASSETS.map(a => {
+          const change = rates ? rates[a.key].change : 0;
+          const up = change >= 0;
+          const isOpen = open === a.key;
+          return (
+            <div key={a.key} className="rounded-xl border overflow-hidden" style={{ background: 'var(--bg-card)', borderColor: 'var(--border)' }}>
+              <div className="p-4 flex items-center gap-3 flex-wrap">
+                <button type="button" onClick={() => setOpen(o => o === a.key ? null : a.key)}
+                  className="flex items-center gap-3 flex-1 min-w-0 text-left">
+                  <div className="w-10 h-10 rounded-xl flex items-center justify-center text-xl flex-shrink-0" style={{ background: 'var(--surface)' }}>{a.emoji}</div>
+                  <div className="flex-1 min-w-0">
+                    <p className="font-semibold text-sm flex items-center gap-1.5" style={{ color: 'var(--fg)' }}>
+                      {a.label}
+                      <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"
+                        style={{ color: 'var(--fg-3)', transform: isOpen ? 'rotate(180deg)' : 'none', transition: 'transform .2s' }}>
+                        <path d="M6 9l6 6 6-6"/></svg>
+                    </p>
+                    <p className="font-mono text-[11px] flex items-center gap-1.5" style={{ color: 'var(--fg-3)' }}>
+                      ₺{fmt(priceOf(a.key))}
+                      {rates && <span style={{ color: up ? '#30D158' : '#ff5d5d' }}>{up ? '▲' : '▼'} %{Math.abs(change).toFixed(2)}</span>}
+                    </p>
+                  </div>
+                </button>
+                <div className="flex items-center gap-2">
+                  <input type={hidden ? 'password' : 'number'} min={0} step="any" inputMode="decimal" placeholder={hidden ? '••••' : '0'}
+                    value={holdings[a.key] || ''} onFocus={e => e.target.select()}
+                    onChange={e => { const n = parseFloat(e.target.value); setHoldings(h => ({ ...h, [a.key]: Number.isFinite(n) && n >= 0 ? n : 0 })); }}
+                    className="input tabular-nums" style={{ width: 110, textAlign: 'right' }} />
+                  <span className="font-mono text-[11px] w-10" style={{ color: 'var(--fg-3)' }}>{a.unit}</span>
+                </div>
+                <div className="w-full flex items-center justify-between pt-3 mt-1" style={{ borderTop: '1px solid var(--border)' }}>
+                  <span className="font-mono text-[11px]" style={{ color: 'var(--fg-3)' }}>Değeri</span>
+                  <span className="font-semibold tabular-nums" style={{ color: 'var(--fg)' }}>₺{hidden ? '••••' : fmt(valueOf(a.key))}</span>
+                </div>
+              </div>
+              <AnimatePresence initial={false}>
+                {isOpen && (
+                  <motion.div initial={{ height: 0, opacity: 0 }} animate={{ height: 'auto', opacity: 1 }} exit={{ height: 0, opacity: 0 }}
+                    transition={{ duration: 0.25, ease: [0.23, 1, 0.32, 1] }} style={{ overflow: 'hidden' }}>
+                    <div className="px-4 pb-4 pt-3" style={{ borderTop: '1px solid var(--border)' }}>
+                      {/* Zaman aralığı seçici */}
+                      <div className="flex flex-wrap items-center gap-1 p-1 rounded-lg mb-3" style={{ background: 'var(--surface)' }}>
+                        {FIN_RANGES.map((r, i) => (
+                          <button key={r.key} type="button" onClick={() => setRange(i)}
+                            className="font-mono text-[11px] px-2.5 py-1 rounded-md transition-colors"
+                            style={i === range ? { background: 'var(--bg-card)', color: 'var(--fg)' } : { color: 'var(--fg-3)' }}>
+                            {r.label}
+                          </button>
+                        ))}
+                      </div>
+                      {(() => {
+                        const r = FIN_RANGES[range];
+                        const loadingP = <p className="font-mono text-[11px] py-6 text-center" style={{ color: 'var(--fg-3)' }}>Grafik yükleniyor…</p>;
+                        if (r.kind === 'live') {
+                          const since = Date.now() - 60_000; // son 1 dakika
+                          return <MiniChart points={live[a.key].filter(p => (p.t ?? 0) >= since)} color={a.color} id={`${a.key}-live`} />;
+                        }
+                        if (r.kind === 'intraday') {
+                          if (!intraday) return loadingP;
+                          const cutoff = Date.now() - (r.hours ?? 1) * 3600e3;
+                          const pts = intraday[a.key].filter(p => (p.t ?? 0) >= cutoff);
+                          return <MiniChart points={pts} color={a.color} id={`${a.key}-intra`} />;
+                        }
+                        if (!history) return loadingP;
+                        return <MiniChart points={sliceRange(history[a.key], r.days ?? 30)} color={a.color} id={a.key} />;
+                      })()}
+                      {FIN_RANGES[range].kind === 'live' && (
+                        <p className="font-mono text-[10px] text-center mt-2" style={{ color: 'var(--fg-3)' }}>
+                          Canlı akış · son 1 dakika · 5 sn&apos;de bir nokta (kaynak ~dakikada bir değişir)
+                        </p>
+                      )}
+                      {FIN_RANGES[range].kind === 'intraday' && (
+                        <p className="font-mono text-[10px] text-center mt-2" style={{ color: 'var(--fg-3)' }}>
+                          Saat-içi veri sunucuda 7/24 birikir (cron) · birkaç saat sonra dolmaya başlar
+                        </p>
+                      )}
+                    </div>
+                  </motion.div>
+                )}
+              </AnimatePresence>
+            </div>
+          );
+        })}
+      </div>
+
+      <p className="font-mono text-[10px] text-center" style={{ color: 'var(--fg-3)' }}>
+        Kurlar finans.truncgil.com&apos;dan (satış fiyatı), dakikada bir güncellenir.
+      </p>
     </div>
   );
 }
