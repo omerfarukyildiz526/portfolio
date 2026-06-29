@@ -160,6 +160,11 @@ export default function AdminPage() {
     setTimeout(() => setToast(null), 2600);
   }, []);
 
+  // Kararlı referans: panellere geçince her render'da yeni fonksiyon oluşmasın
+  // (yoksa çocukların useEffect([onAuthError])'i her saniye yeniden çekip
+  // düzenlenen içeriği eski haline ezerdi).
+  const goLogin = useCallback(() => setStatus('login'), []);
+
   const loadPosts = useCallback(async () => {
     const res = await fetch('/api/admin/posts', { cache: 'no-store' });
     if (res.status === 401) { setStatus('login'); return; }
@@ -787,15 +792,15 @@ export default function AdminPage() {
 
             {section === 'overview' ? (
               <OverviewPanel posts={posts} messages={messages} unread={unread}
-                onAuthError={() => setStatus('login')} onGo={setSection} />
+                onAuthError={goLogin} onGo={setSection} />
             ) : section === 'messages' ? (
               <MessagesPanel messages={messages} openMsg={openMsg} onOpen={openMessage} onToggleRead={markRead} onDelete={confirmDeleteMessage} />
             ) : section === 'security' ? (
-              <SecurityPanel notify={notify} onAuthError={() => setStatus('login')} />
+              <SecurityPanel notify={notify} onAuthError={goLogin} />
             ) : section === 'skills' ? (
-              <SkillsPanel notify={notify} onAuthError={() => setStatus('login')} />
+              <SkillsPanel notify={notify} onAuthError={goLogin} />
             ) : PAGE_SECTIONS.includes(section) ? (
-              <PagesPanel page={section as PageKey} notify={notify} onAuthError={() => setStatus('login')} />
+              <PagesPanel page={section as PageKey} notify={notify} onAuthError={goLogin} />
             ) : (
             <>
             {/* Kurtarma: yarım kalmış taslak */}
