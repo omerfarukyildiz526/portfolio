@@ -3,6 +3,7 @@ import { Inter, JetBrains_Mono } from "next/font/google";
 import Script from "next/script";
 import "./globals.css";
 import ClientShell from "@/components/ClientShell";
+import VisitTracker from "@/components/VisitTracker";
 
 // Yandex.Metrika sayaç kimliği
 const YM_ID = 110249325;
@@ -66,6 +67,7 @@ export default function RootLayout({
     >
       <body>
         <ClientShell>{children}</ClientShell>
+        <VisitTracker />
 
         {/* Yandex.Metrika */}
         <Script id="yandex-metrika" strategy="afterInteractive" dangerouslySetInnerHTML={{ __html: `

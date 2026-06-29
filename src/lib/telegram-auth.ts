@@ -61,6 +61,20 @@ export async function disableTelegram(): Promise<void> {
   await (await tgCol()).deleteOne({ _id: 'telegram' });
 }
 
+// Telegram kurulu mu? (yardımcı bildirimler için.)
+export async function telegramReady(): Promise<boolean> {
+  const d = await getDoc();
+  return !!(d?.botToken && d?.chatId);
+}
+
+// Yapılandırılmış chat'e düz mesaj gönder (ör. ziyaretçi özeti). Kurulu değilse sessiz.
+export async function sendTelegramMessage(text: string): Promise<boolean> {
+  const d = await getDoc();
+  if (!d?.botToken || !d?.chatId) return false;
+  const r = await tgApi(d.botToken, 'sendMessage', { chat_id: d.chatId, text, disable_web_page_preview: true });
+  return !!r.ok;
+}
+
 // Giriş onayı: bekleyen istek oluştur + Telegram'a onay/ret butonlu mesaj gönder.
 export async function sendTelegramLoginRequest(ua: string): Promise<{ id: string } | null | 'unconfigured'> {
   const d = await getDoc();
