@@ -4,7 +4,26 @@ import { randomBytes } from 'crypto';
 import { getDb } from './mongodb';
 
 // Telefon onaylı giriş (Web Push). VAPID anahtarları DB'de saklanır → env gerekmez.
-type SubDoc = { _id: string; sub: PushSubscription; createdAt: Date };
+type SubDoc = { _id: string; sub: PushSubscription; label?: string; createdAt: Date };
+
+// User-Agent'tan okunaklı cihaz etiketi (OS · tarayıcı).
+export function deviceLabel(ua: string): string {
+  const u = ua || '';
+  let os = 'Cihaz';
+  if (/Android/i.test(u)) os = 'Android';
+  else if (/iPhone/i.test(u)) os = 'iPhone';
+  else if (/iPad/i.test(u)) os = 'iPad';
+  else if (/Windows/i.test(u)) os = 'Windows';
+  else if (/Macintosh|Mac OS/i.test(u)) os = 'Mac';
+  else if (/Linux/i.test(u)) os = 'Linux';
+  let br = '';
+  if (/Edg\//i.test(u)) br = 'Edge';
+  else if (/SamsungBrowser/i.test(u)) br = 'Samsung Internet';
+  else if (/Firefox\//i.test(u)) br = 'Firefox';
+  else if (/CriOS|Chrome\//i.test(u)) br = 'Chrome';
+  else if (/Safari\//i.test(u)) br = 'Safari';
+  return br ? `${os} · ${br}` : os;
+}
 type ReqStatus = 'pending' | 'approved' | 'denied';
 type ReqDoc = { _id: string; approveToken: string; status: ReqStatus; ua?: string; createdAt: Date; expiresAt: number; consumed?: boolean };
 type VapidDoc = { _id: string; publicKey: string; privateKey: string };
@@ -38,14 +57,24 @@ export async function getVapidPublicKey(): Promise<string> {
   return ensureVapid();
 }
 
-export async function saveSubscription(sub: PushSubscription): Promise<void> {
+export async function saveSubscription(sub: PushSubscription, label?: string): Promise<void> {
   await ensureVapid();
   const col = await subsCol();
-  await col.replaceOne({ _id: sub.endpoint }, { sub, createdAt: new Date() }, { upsert: true });
+  await col.replaceOne({ _id: sub.endpoint }, { sub, label, createdAt: new Date() }, { upsert: true });
 }
 
 export async function countSubscriptions(): Promise<number> {
   return (await subsCol()).countDocuments();
+}
+
+// Kayıtlı cihazların etiket + tarih listesi (endpoint/anahtar sızdırmadan).
+export async function listDevices(): Promise<{ label: string; createdAt: string }[]> {
+  const col = await subsCol();
+  const docs = await col.find({}).sort({ createdAt: -1 }).toArray();
+  return docs.map(d => ({
+    label: d.label || 'Bilinmeyen cihaz',
+    createdAt: (d.createdAt instanceof Date ? d.createdAt : new Date()).toISOString(),
+  }));
 }
 
 export async function clearSubscriptions(): Promise<void> {

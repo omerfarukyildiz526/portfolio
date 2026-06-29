@@ -1178,8 +1178,16 @@ function SecurityPanel({ notify, onAuthError }: { notify: (m: string, t?: 'ok' |
   const [busy, setBusy] = useState(false);
   // Web Push (telefon onayı)
   const [pushKey, setPushKey] = useState<string | null>(null);
-  const [pushCount, setPushCount] = useState<number | null>(null);
+  const [pushDevices, setPushDevices] = useState<{ label: string; createdAt: string }[] | null>(null);
   const [pushBusy, setPushBusy] = useState(false);
+
+  const loadPush = useCallback(async () => {
+    const res = await fetch('/api/admin/push/subscribe', { cache: 'no-store' });
+    if (res.status === 401) return;
+    const d = await res.json().catch(() => ({}));
+    setPushKey(d.key ?? null);
+    setPushDevices(Array.isArray(d.devices) ? d.devices : []);
+  }, []);
 
   useEffect(() => {
     (async () => {
@@ -1188,14 +1196,8 @@ function SecurityPanel({ notify, onAuthError }: { notify: (m: string, t?: 'ok' |
       const d = await res.json().catch(() => ({}));
       setEnabled(!!d.enabled);
     })();
-    (async () => {
-      const res = await fetch('/api/admin/push/subscribe', { cache: 'no-store' });
-      if (res.status === 401) return;
-      const d = await res.json().catch(() => ({}));
-      setPushKey(d.key ?? null);
-      setPushCount(typeof d.count === 'number' ? d.count : 0);
-    })();
-  }, [onAuthError]);
+    (async () => { await loadPush(); })();
+  }, [onAuthError, loadPush]);
 
   async function registerDevice() {
     if (pushBusy) return;
@@ -1217,7 +1219,7 @@ function SecurityPanel({ notify, onAuthError }: { notify: (m: string, t?: 'ok' |
         method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ subscription: sub }),
       });
       if (res.status === 401) return onAuthError();
-      if (res.ok) { setPushCount(c => (c ?? 0) + 1); notify('Bu cihaz onay cihazı olarak eklendi 📲'); }
+      if (res.ok) { await loadPush(); notify('Bu cihaz onay cihazı olarak eklendi 📲'); }
       else notify('Kaydedilemedi.', 'err');
     } catch (err) {
       console.error(err);
@@ -1237,7 +1239,7 @@ function SecurityPanel({ notify, onAuthError }: { notify: (m: string, t?: 'ok' |
       } catch {}
       const res = await fetch('/api/admin/push/subscribe', { method: 'DELETE' });
       if (res.status === 401) return onAuthError();
-      if (res.ok) { setPushCount(0); notify('Onay cihazları kaldırıldı.'); }
+      if (res.ok) { setPushDevices([]); notify('Onay cihazları kaldırıldı.'); }
       else notify('Kaldırılamadı.', 'err');
     } finally {
       setPushBusy(false);
@@ -1350,22 +1352,38 @@ function SecurityPanel({ notify, onAuthError }: { notify: (m: string, t?: 'ok' |
           <div className="w-10 h-10 rounded-xl flex items-center justify-center text-xl" style={{ background: 'var(--surface)' }}>📲</div>
           <div>
             <p className="font-semibold text-sm" style={{ color: 'var(--fg)' }}>Telefonla onay (push)</p>
-            <p className="font-mono text-[11px]" style={{ color: (pushCount ?? 0) > 0 ? '#30D158' : 'var(--fg-3)' }}>
-              {pushCount === null ? '…' : (pushCount > 0 ? `● ${pushCount} kayıtlı cihaz` : '○ Kayıtlı cihaz yok')}
+            <p className="font-mono text-[11px]" style={{ color: (pushDevices?.length ?? 0) > 0 ? '#30D158' : 'var(--fg-3)' }}>
+              {pushDevices === null ? '…' : (pushDevices.length > 0 ? `● ${pushDevices.length} kayıtlı cihaz` : '○ Kayıtlı cihaz yok')}
             </p>
           </div>
         </div>
         <p className="body-sm mb-4" style={{ color: 'var(--fg-3)' }}>
-          Bu cihazı (telefonunu) onay cihazı yap. Girişte &quot;Telefonuma onay gönder&quot; dersin, telefonda
-          bildirime <b style={{ color: 'var(--fg-2)' }}>Onayla</b> deyince kod yazmadan girersin. Tamamen ücretsiz, 3. parti yok.
+          Bu cihazı onay cihazı yap. <b style={{ color: 'var(--fg-2)' }}>Bu butona hangi cihazda basarsan o kaydedilir</b> —
+          telefonuna bildirim gelmesi için bu sayfayı <b style={{ color: 'var(--fg-2)' }}>telefonda</b> açıp basmalısın. Tamamen ücretsiz, 3. parti yok.
         </p>
+
+        {/* Kayıtlı cihaz listesi */}
+        {pushDevices && pushDevices.length > 0 && (
+          <div className="space-y-2 mb-4">
+            {pushDevices.map((dev, i) => (
+              <div key={i} className="flex items-center gap-2.5 px-3 py-2 rounded-lg" style={{ background: 'var(--surface)' }}>
+                <span className="text-base">{dev.label.includes('Android') || dev.label.includes('iPhone') ? '📱' : '💻'}</span>
+                <span className="font-mono text-[12px] flex-1" style={{ color: 'var(--fg)' }}>{dev.label}</span>
+                <span className="font-mono text-[10px]" style={{ color: 'var(--fg-3)' }}>
+                  {new Date(dev.createdAt).toLocaleString('tr-TR', { day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit' })}
+                </span>
+              </div>
+            ))}
+          </div>
+        )}
+
         <div className="flex flex-wrap items-center gap-2">
           <button onClick={registerDevice} disabled={pushBusy}
             className="px-4 py-2.5 rounded-xl font-semibold text-sm transition-opacity hover:opacity-90 disabled:opacity-50"
             style={{ background: 'var(--accent)', color: '#fff' }}>
             {pushBusy ? 'İşleniyor…' : '📲 Bu cihazı onay cihazı yap'}
           </button>
-          {(pushCount ?? 0) > 0 && (
+          {(pushDevices?.length ?? 0) > 0 && (
             <button onClick={removeDevices} disabled={pushBusy}
               className="font-mono text-[12px] px-3.5 py-2 rounded-lg border" style={{ color: '#ff5d5d', borderColor: 'var(--border)' }}>
               Cihazları kaldır
@@ -1373,7 +1391,7 @@ function SecurityPanel({ notify, onAuthError }: { notify: (m: string, t?: 'ok' |
           )}
         </div>
         <p className="font-mono text-[10px] mt-3" style={{ color: 'var(--fg-3)' }}>
-          Not: Telefonda çalışması için sitenin HTTPS (canlı) sürümünü açıp izin vermen gerekir; localhost yalnızca bu bilgisayarda test eder.
+          Not: Telefonda çalışması için sitenin HTTPS (canlı) sürümünü telefonda açıp izin vermen gerekir.
         </p>
       </div>
     </div>
