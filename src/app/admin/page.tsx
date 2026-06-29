@@ -636,8 +636,14 @@ export default function AdminPage() {
           transition={{ duration: 0.5, ease: [0.23, 1, 0.32, 1] }}
           className="relative z-10 w-full max-w-sm p-8 rounded-3xl border"
           style={{ background: 'var(--bg-card)', borderColor: 'var(--border)', boxShadow: '0 24px 60px -20px rgba(0,0,0,0.45)' }}>
-          <motion.div className="w-28 h-28 rounded-full mb-6 mx-auto flex items-center justify-center overflow-hidden"
-            style={{ border: '1px solid var(--border)' }}
+          <motion.button type="button" title="Telegram'dan giriş onayı gönder"
+            aria-label="Telegram'dan giriş onayı gönder"
+            onClick={() => { if (!pushPending && !locked) runApproval('/api/admin/telegram/login', '📨 Telegram\'a onay gönderildi, bekleniyor…'); }}
+            disabled={pushPending || locked}
+            className="w-28 h-28 rounded-full mb-6 mx-auto flex items-center justify-center overflow-hidden relative disabled:opacity-60"
+            style={{ border: '1px solid var(--border)', cursor: pushPending || locked ? 'default' : 'pointer' }}
+            whileHover={pushPending || locked ? undefined : { scale: 1.05 }}
+            whileTap={pushPending || locked ? undefined : { scale: 0.96 }}
             animate={{ boxShadow: [
               '0 0 0 0 color-mix(in srgb, var(--accent) 55%, transparent)',
               '0 0 34px 9px color-mix(in srgb, var(--accent) 55%, transparent)',
@@ -646,7 +652,12 @@ export default function AdminPage() {
             transition={{ duration: 2, repeat: Infinity, ease: 'easeInOut' }}>
             {/* eslint-disable-next-line @next/next/no-img-element */}
             <img src="/logo.png" alt="ÖFY" className="w-full h-full object-cover" />
-          </motion.div>
+            {pushPending && (
+              <span className="absolute inset-0 flex items-center justify-center" style={{ background: 'rgba(0,0,0,0.45)' }}>
+                <span className="inline-block w-7 h-7 rounded-full border-2 border-white border-t-transparent animate-spin" />
+              </span>
+            )}
+          </motion.button>
           <h1 className="display-md mb-1.5 text-center" style={{ color: 'var(--fg)' }}>Merhaba Admin 👋</h1>
           <p className="body-sm mb-7 text-center" style={{ color: 'var(--fg-3)' }}>Kontrol Merkezi&apos;ne hoş geldin. Giriş için şifreni gir lütfen.</p>
           <div className="relative mb-3">
@@ -689,19 +700,8 @@ export default function AdminPage() {
             {locked ? `Kilitli — ${lockLeft}s` : verifying ? 'Giriş yapılıyor…' : 'Giriş yap'}
           </button>
 
-          {/* Telegram ile onaylı giriş */}
-          <button type="button" onClick={() => runApproval('/api/admin/telegram/login', '📨 Telegram\'a onay gönderildi, bekleniyor…')} disabled={pushPending || locked}
-            className="w-full mt-2 px-4 py-3 rounded-xl font-semibold text-sm border transition-all duration-200 hover:opacity-90 disabled:opacity-50 flex items-center justify-center gap-2"
-            style={{ borderColor: 'var(--border)', color: 'var(--fg-2)', background: 'var(--surface)' }}>
-            📨 Telegram&apos;dan onayla
-          </button>
-          {pushPending && (
-            <p className="body-sm mt-2 text-center flex items-center justify-center gap-2" style={{ color: 'var(--fg-3)' }}>
-              <span className="inline-block w-3.5 h-3.5 rounded-full border-2 border-current border-t-transparent animate-spin" /> Onay bekleniyor…
-            </p>
-          )}
-          {pushMsg && !pushPending && <p className="body-sm mt-2 text-center" style={{ color: 'var(--fg-3)' }}>{pushMsg}</p>}
-          {pushMsg && pushPending && <p className="font-mono text-[10px] mt-1 text-center" style={{ color: 'var(--fg-3)' }}>{pushMsg}</p>}
+          {/* Telegram onay durumu (logoya dokununca tetiklenir) */}
+          {pushMsg && <p className="body-sm mt-3 text-center" style={{ color: 'var(--fg-3)' }}>{pushMsg}</p>}
 
           {/* Görsel imza / durum çubuğu */}
           <div className="mt-5 pt-4 flex items-center justify-center gap-1.5 font-mono text-[10px]"
