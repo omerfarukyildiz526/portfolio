@@ -233,22 +233,23 @@ export default function AdminPage() {
     }
   }
 
-  // Telefon onaylı giriş: kayıtlı cihaza push gönder, onay gelene kadar yokla.
-  async function pushLogin() {
+  // Telefon onaylı giriş: onay isteği gönder, onay gelene kadar yokla.
+  // endpoint hem Web Push (/push/login) hem Telegram (/telegram/login) için kullanılır.
+  async function runApproval(endpoint: string, sentMsg: string) {
     if (pushPending || lockUntil > Date.now()) return;
     setLoginError(''); setPushMsg('');
     setPushPending(true);
     try {
-      const res = await fetch('/api/admin/push/login', { method: 'POST' });
+      const res = await fetch(endpoint, { method: 'POST' });
       const d = await res.json().catch(() => ({}));
       if (!res.ok || !d.id) { setPushMsg(d.error || 'Başlatılamadı.'); setPushPending(false); return; }
-      setPushMsg('📲 Telefonuna onay gönderildi, bekleniyor…');
+      setPushMsg(sentMsg);
       const id = d.id as string;
       const started = Date.now();
       const poll = async () => {
         if (Date.now() - started > 5 * 60 * 1000) { setPushMsg('Süre doldu, tekrar dene.'); setPushPending(false); return; }
         try {
-          const r = await fetch(`/api/admin/push/login?id=${id}`, { cache: 'no-store' });
+          const r = await fetch(`${endpoint}?id=${id}`, { cache: 'no-store' });
           const s = await r.json().catch(() => ({}));
           if (s.status === 'approved' && s.ok) {
             setPushPending(false); setPushMsg('');
@@ -688,15 +689,19 @@ export default function AdminPage() {
             {locked ? `Kilitli — ${lockLeft}s` : verifying ? 'Giriş yapılıyor…' : 'Giriş yap'}
           </button>
 
-          {/* Telefonla onaylı giriş */}
-          <button type="button" onClick={pushLogin} disabled={pushPending || locked}
+          {/* Telegram ile onaylı giriş */}
+          <button type="button" onClick={() => runApproval('/api/admin/telegram/login', '📨 Telegram\'a onay gönderildi, bekleniyor…')} disabled={pushPending || locked}
             className="w-full mt-2 px-4 py-3 rounded-xl font-semibold text-sm border transition-all duration-200 hover:opacity-90 disabled:opacity-50 flex items-center justify-center gap-2"
             style={{ borderColor: 'var(--border)', color: 'var(--fg-2)', background: 'var(--surface)' }}>
-            {pushPending
-              ? <><span className="inline-block w-3.5 h-3.5 rounded-full border-2 border-current border-t-transparent animate-spin" /> Telefon onayı bekleniyor…</>
-              : <>📲 Telefonuma onay gönder</>}
+            📨 Telegram&apos;dan onayla
           </button>
-          {pushMsg && <p className="body-sm mt-2 text-center" style={{ color: 'var(--fg-3)' }}>{pushMsg}</p>}
+          {pushPending && (
+            <p className="body-sm mt-2 text-center flex items-center justify-center gap-2" style={{ color: 'var(--fg-3)' }}>
+              <span className="inline-block w-3.5 h-3.5 rounded-full border-2 border-current border-t-transparent animate-spin" /> Onay bekleniyor…
+            </p>
+          )}
+          {pushMsg && !pushPending && <p className="body-sm mt-2 text-center" style={{ color: 'var(--fg-3)' }}>{pushMsg}</p>}
+          {pushMsg && pushPending && <p className="font-mono text-[10px] mt-1 text-center" style={{ color: 'var(--fg-3)' }}>{pushMsg}</p>}
 
           {/* Görsel imza / durum çubuğu */}
           <div className="mt-5 pt-4 flex items-center justify-center gap-1.5 font-mono text-[10px]"
@@ -1159,34 +1164,26 @@ function MessagesPanel({ messages, openMsg, onOpen, onToggleRead, onDelete }: {
   );
 }
 
-// VAPID public anahtarını (base64url) push API'sinin beklediği Uint8Array'e çevir.
-function urlBase64ToUint8Array(base64String: string): Uint8Array {
-  const padding = '='.repeat((4 - (base64String.length % 4)) % 4);
-  const base64 = (base64String + padding).replace(/-/g, '+').replace(/_/g, '/');
-  const raw = atob(base64);
-  const arr = new Uint8Array(raw.length);
-  for (let i = 0; i < raw.length; i++) arr[i] = raw.charCodeAt(i);
-  return arr;
-}
-
-// ── Güvenlik (/security) — Authenticator (QR/TOTP) + telefon onayı (Web Push) ──
+// ── Güvenlik (/security) — Authenticator (QR/TOTP) + Telegram onayı ──
 function SecurityPanel({ notify, onAuthError }: { notify: (m: string, t?: 'ok' | 'err') => void; onAuthError: () => void }) {
   const [enabled, setEnabled] = useState<boolean | null>(null);
   const [qr, setQr] = useState<string | null>(null);
   const [secret, setSecret] = useState<string | null>(null);
   const [code, setCode] = useState('');
   const [busy, setBusy] = useState(false);
-  // Web Push (telefon onayı)
-  const [pushKey, setPushKey] = useState<string | null>(null);
-  const [pushDevices, setPushDevices] = useState<{ label: string; createdAt: string }[] | null>(null);
-  const [pushBusy, setPushBusy] = useState(false);
+  // Telegram
+  const [tgConfigured, setTgConfigured] = useState<boolean | null>(null);
+  const [tgChatId, setTgChatId] = useState<string | undefined>(undefined);
+  const [tgToken, setTgToken] = useState('');
+  const [tgChatInput, setTgChatInput] = useState('');
+  const [tgBusy, setTgBusy] = useState(false);
 
-  const loadPush = useCallback(async () => {
-    const res = await fetch('/api/admin/push/subscribe', { cache: 'no-store' });
+  const loadTg = useCallback(async () => {
+    const res = await fetch('/api/admin/telegram', { cache: 'no-store' });
     if (res.status === 401) return;
     const d = await res.json().catch(() => ({}));
-    setPushKey(d.key ?? null);
-    setPushDevices(Array.isArray(d.devices) ? d.devices : []);
+    setTgConfigured(!!d.configured);
+    setTgChatId(d.chatId);
   }, []);
 
   useEffect(() => {
@@ -1196,54 +1193,42 @@ function SecurityPanel({ notify, onAuthError }: { notify: (m: string, t?: 'ok' |
       const d = await res.json().catch(() => ({}));
       setEnabled(!!d.enabled);
     })();
-    (async () => { await loadPush(); })();
-  }, [onAuthError, loadPush]);
+    (async () => { await loadTg(); })();
+  }, [onAuthError, loadTg]);
 
-  async function registerDevice() {
-    if (pushBusy) return;
-    if (!('serviceWorker' in navigator) || !('PushManager' in window)) {
-      return notify('Bu tarayıcı push bildirimini desteklemiyor.', 'err');
-    }
-    if (!pushKey) return notify('Anahtar yüklenemedi, sayfayı yenile.', 'err');
-    setPushBusy(true);
-    try {
-      const reg = await navigator.serviceWorker.register('/sw.js');
-      await navigator.serviceWorker.ready;
-      const perm = await Notification.requestPermission();
-      if (perm !== 'granted') { notify('Bildirim izni verilmedi.', 'err'); return; }
-      const sub = await reg.pushManager.subscribe({
-        userVisibleOnly: true,
-        applicationServerKey: urlBase64ToUint8Array(pushKey) as BufferSource,
-      });
-      const res = await fetch('/api/admin/push/subscribe', {
-        method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ subscription: sub }),
-      });
-      if (res.status === 401) return onAuthError();
-      if (res.ok) { await loadPush(); notify('Bu cihaz onay cihazı olarak eklendi 📲'); }
-      else notify('Kaydedilemedi.', 'err');
-    } catch (err) {
-      console.error(err);
-      notify('Cihaz eklenemedi (HTTPS/izin gerekebilir).', 'err');
-    } finally {
-      setPushBusy(false);
-    }
+  async function tgDiscover() {
+    if (tgBusy || !tgToken.trim()) return;
+    setTgBusy(true);
+    const res = await fetch('/api/admin/telegram', {
+      method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ token: tgToken.trim() }),
+    });
+    setTgBusy(false);
+    if (res.status === 401) return onAuthError();
+    const d = await res.json().catch(() => ({}));
+    if (res.ok && d.chatId) { setTgChatInput(d.chatId); notify('Chat ID bulundu: ' + d.chatId); }
+    else notify(d.error || 'Chat ID bulunamadı.', 'err');
   }
 
-  async function removeDevices() {
-    setPushBusy(true);
-    try {
-      try {
-        const reg = await navigator.serviceWorker.getRegistration();
-        const sub = await reg?.pushManager.getSubscription();
-        await sub?.unsubscribe();
-      } catch {}
-      const res = await fetch('/api/admin/push/subscribe', { method: 'DELETE' });
-      if (res.status === 401) return onAuthError();
-      if (res.ok) { setPushDevices([]); notify('Onay cihazları kaldırıldı.'); }
-      else notify('Kaldırılamadı.', 'err');
-    } finally {
-      setPushBusy(false);
-    }
+  async function tgActivate() {
+    if (tgBusy || !tgToken.trim() || !tgChatInput.trim()) return;
+    setTgBusy(true);
+    const res = await fetch('/api/admin/telegram', {
+      method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ token: tgToken.trim(), chatId: tgChatInput.trim() }),
+    });
+    setTgBusy(false);
+    if (res.status === 401) return onAuthError();
+    const d = await res.json().catch(() => ({}));
+    if (res.ok) { setTgToken(''); await loadTg(); notify('Telegram etkinleştirildi 📨'); }
+    else notify(d.error || 'Etkinleştirilemedi.', 'err');
+  }
+
+  async function tgDisable() {
+    setTgBusy(true);
+    const res = await fetch('/api/admin/telegram', { method: 'DELETE' });
+    setTgBusy(false);
+    if (res.status === 401) return onAuthError();
+    if (res.ok) { setTgConfigured(false); setTgChatId(undefined); notify('Telegram kaldırıldı.'); }
+    else notify('Kaldırılamadı.', 'err');
   }
 
   async function begin() {
@@ -1346,53 +1331,54 @@ function SecurityPanel({ notify, onAuthError }: { notify: (m: string, t?: 'ok' |
         </div>
       )}
 
-      {/* ── Telefon onayı (Web Push) ── */}
+      {/* ── Telegram onayı ── */}
       <div className="p-5 rounded-2xl border" style={{ background: 'var(--bg-card)', borderColor: 'var(--border)' }}>
         <div className="flex items-center gap-3 mb-2">
-          <div className="w-10 h-10 rounded-xl flex items-center justify-center text-xl" style={{ background: 'var(--surface)' }}>📲</div>
+          <div className="w-10 h-10 rounded-xl flex items-center justify-center text-xl" style={{ background: 'var(--surface)' }}>📨</div>
           <div>
-            <p className="font-semibold text-sm" style={{ color: 'var(--fg)' }}>Telefonla onay (push)</p>
-            <p className="font-mono text-[11px]" style={{ color: (pushDevices?.length ?? 0) > 0 ? '#30D158' : 'var(--fg-3)' }}>
-              {pushDevices === null ? '…' : (pushDevices.length > 0 ? `● ${pushDevices.length} kayıtlı cihaz` : '○ Kayıtlı cihaz yok')}
+            <p className="font-semibold text-sm" style={{ color: 'var(--fg)' }}>Telegram ile onay</p>
+            <p className="font-mono text-[11px]" style={{ color: tgConfigured ? '#30D158' : 'var(--fg-3)' }}>
+              {tgConfigured === null ? '…' : (tgConfigured ? `● Etkin${tgChatId ? ` · chat ${tgChatId}` : ''}` : '○ Kurulu değil')}
             </p>
           </div>
         </div>
-        <p className="body-sm mb-4" style={{ color: 'var(--fg-3)' }}>
-          Bu cihazı onay cihazı yap. <b style={{ color: 'var(--fg-2)' }}>Bu butona hangi cihazda basarsan o kaydedilir</b> —
-          telefonuna bildirim gelmesi için bu sayfayı <b style={{ color: 'var(--fg-2)' }}>telefonda</b> açıp basmalısın. Tamamen ücretsiz, 3. parti yok.
-        </p>
 
-        {/* Kayıtlı cihaz listesi */}
-        {pushDevices && pushDevices.length > 0 && (
-          <div className="space-y-2 mb-4">
-            {pushDevices.map((dev, i) => (
-              <div key={i} className="flex items-center gap-2.5 px-3 py-2 rounded-lg" style={{ background: 'var(--surface)' }}>
-                <span className="text-base">{dev.label.includes('Android') || dev.label.includes('iPhone') ? '📱' : '💻'}</span>
-                <span className="font-mono text-[12px] flex-1" style={{ color: 'var(--fg)' }}>{dev.label}</span>
-                <span className="font-mono text-[10px]" style={{ color: 'var(--fg-3)' }}>
-                  {new Date(dev.createdAt).toLocaleString('tr-TR', { day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit' })}
-                </span>
-              </div>
-            ))}
-          </div>
-        )}
-
-        <div className="flex flex-wrap items-center gap-2">
-          <button onClick={registerDevice} disabled={pushBusy}
-            className="px-4 py-2.5 rounded-xl font-semibold text-sm transition-opacity hover:opacity-90 disabled:opacity-50"
-            style={{ background: 'var(--accent)', color: '#fff' }}>
-            {pushBusy ? 'İşleniyor…' : '📲 Bu cihazı onay cihazı yap'}
-          </button>
-          {(pushDevices?.length ?? 0) > 0 && (
-            <button onClick={removeDevices} disabled={pushBusy}
+        {tgConfigured ? (
+          <>
+            <p className="body-sm mb-4" style={{ color: 'var(--fg-3)' }}>
+              Girişte &quot;Telegram&quot; butonuna basınca botuna onay/ret mesajı gelir. Chrome bildirim iznine takılmaz.
+            </p>
+            <button onClick={tgDisable} disabled={tgBusy}
               className="font-mono text-[12px] px-3.5 py-2 rounded-lg border" style={{ color: '#ff5d5d', borderColor: 'var(--border)' }}>
-              Cihazları kaldır
+              Telegram&apos;ı kaldır
             </button>
-          )}
-        </div>
-        <p className="font-mono text-[10px] mt-3" style={{ color: 'var(--fg-3)' }}>
-          Not: Telefonda çalışması için sitenin HTTPS (canlı) sürümünü telefonda açıp izin vermen gerekir.
-        </p>
+          </>
+        ) : (
+          <>
+            <p className="body-sm mb-3" style={{ color: 'var(--fg-3)' }}>
+              1) Telegram&apos;da <b style={{ color: 'var(--fg-2)' }}>@BotFather</b>&apos;a <code>/newbot</code> yazıp bot oluştur, sana verdiği
+              <b style={{ color: 'var(--fg-2)' }}> token</b>&apos;ı aşağıya yapıştır. 2) Botuna Telegram&apos;dan <code>/start</code> (ya da herhangi bir mesaj) gönder.
+              3) &quot;Chat ID&apos;mi bul&quot;a bas, sonra &quot;Etkinleştir&quot;.
+            </p>
+            <input value={tgToken} onChange={e => setTgToken(e.target.value)} placeholder="Bot token (123456:ABC-...)"
+              className="input mb-2" autoComplete="off" />
+            <div className="flex gap-2 mb-3">
+              <input value={tgChatInput} onChange={e => setTgChatInput(e.target.value)} placeholder="Chat ID"
+                className="input tabular-nums" inputMode="numeric" />
+              <button onClick={tgDiscover} disabled={tgBusy || !tgToken.trim()}
+                className="flex-shrink-0 font-mono text-[12px] px-3.5 py-2 rounded-lg border disabled:opacity-50"
+                style={{ color: 'var(--fg-2)', borderColor: 'var(--border)' }}>Chat ID&apos;mi bul</button>
+            </div>
+            <button onClick={tgActivate} disabled={tgBusy || !tgToken.trim() || !tgChatInput.trim()}
+              className="px-4 py-2.5 rounded-xl font-semibold text-sm transition-opacity hover:opacity-90 disabled:opacity-50"
+              style={{ background: 'var(--accent)', color: '#fff' }}>
+              {tgBusy ? 'İşleniyor…' : 'Etkinleştir'}
+            </button>
+            <p className="font-mono text-[10px] mt-3" style={{ color: 'var(--fg-3)' }}>
+              Not: Webhook için canlı (HTTPS) site gerekir; localhost&apos;ta etkinleştirilemez.
+            </p>
+          </>
+        )}
       </div>
     </div>
   );
