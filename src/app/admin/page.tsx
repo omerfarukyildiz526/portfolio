@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useCallback, useMemo } from 'react';
 import Link from 'next/link';
-import { motion, AnimatePresence } from 'framer-motion';
+import { motion, AnimatePresence, useMotionValue, useSpring, useTransform } from 'framer-motion';
 import type { Post, ContentBlock } from '@/lib/posts';
 import type { SkillsContent, SkillsLang } from '@/lib/skills-content';
 import type { SiteContent, PageKey, HomeLang, ExperienceLang, ContactLang, ProjectsLang } from '@/lib/site-content';
@@ -118,6 +118,103 @@ function countWords(p: Post): number {
   return n;
 }
 
+// ═══════════ Giriş ekranı görsel bileşenleri ═══════════
+
+// Animasyonlu arka plan: kayan ızgara + sürüklenen aurora bloblar.
+function LoginBackground() {
+  return (
+    <div className="pointer-events-none absolute inset-0 overflow-hidden">
+      <motion.div className="absolute inset-0"
+        style={{
+          opacity: 0.05,
+          backgroundImage: 'linear-gradient(var(--fg-3) 1px, transparent 1px), linear-gradient(90deg, var(--fg-3) 1px, transparent 1px)',
+          backgroundSize: '42px 42px',
+        }}
+        animate={{ backgroundPositionY: ['0px', '42px'] }}
+        transition={{ duration: 7, repeat: Infinity, ease: 'linear' }} />
+      <motion.div className="absolute rounded-full blur-[100px]"
+        style={{ width: 460, height: 460, top: '12%', left: '18%', opacity: 0.16, background: 'radial-gradient(circle, var(--accent), transparent 70%)' }}
+        animate={{ x: [0, 60, -30, 0], y: [0, -40, 30, 0] }}
+        transition={{ duration: 18, repeat: Infinity, ease: 'easeInOut' }} />
+      <motion.div className="absolute rounded-full blur-[110px]"
+        style={{ width: 380, height: 380, bottom: '10%', right: '16%', opacity: 0.12, background: 'radial-gradient(circle, #0a5fff, transparent 70%)' }}
+        animate={{ x: [0, -50, 20, 0], y: [0, 30, -20, 0] }}
+        transition={{ duration: 22, repeat: Infinity, ease: 'easeInOut' }} />
+    </div>
+  );
+}
+
+// Saate göre selam + daktilo efekti + canlı İstanbul saati.
+function LoginGreeting() {
+  const full = useMemo(() => {
+    const h = new Date().getHours();
+    const g = h < 5 ? 'İyi geceler' : h < 12 ? 'Günaydın' : h < 17 ? 'İyi günler' : h < 22 ? 'İyi akşamlar' : 'İyi geceler';
+    return `${g} Admin 👋`;
+  }, []);
+  const [typed, setTyped] = useState('');
+  const [clock, setClock] = useState('');
+
+  useEffect(() => {
+    let i = 0;
+    const id = setInterval(() => {
+      i++; setTyped(full.slice(0, i));
+      if (i >= full.length) clearInterval(id);
+    }, 60);
+    return () => clearInterval(id);
+  }, [full]);
+
+  useEffect(() => {
+    const tick = () => setClock(new Date().toLocaleTimeString('tr-TR', { hour: '2-digit', minute: '2-digit', second: '2-digit', timeZone: 'Europe/Istanbul' }));
+    tick();
+    const id = setInterval(tick, 1000);
+    return () => clearInterval(id);
+  }, []);
+
+  return (
+    <>
+      <h1 className="display-md mb-1.5 text-center" style={{ color: 'var(--fg)' }}>
+        {typed}<span className="cursor-blink" style={{ color: 'var(--accent)' }}>▌</span>
+      </h1>
+      <p className="body-sm mb-1 text-center" style={{ color: 'var(--fg-3)' }}>Kontrol Merkezi&apos;ne hoş geldin. Giriş için şifreni gir lütfen.</p>
+      <p className="font-mono text-[12px] mb-7 text-center tabular-nums" style={{ color: 'var(--accent)' }}>İstanbul · {clock || '--:--:--'}</p>
+    </>
+  );
+}
+
+// Başarılı girişte tik + konfeti patlaması.
+function SuccessBurst() {
+  const pieces = Array.from({ length: 18 });
+  const colors = ['#0A84FF', '#30D158', '#FFD60A', '#FF375F', '#BF5AF2'];
+  return (
+    <motion.div className="absolute inset-0 z-30 flex items-center justify-center"
+      initial={{ opacity: 0 }} animate={{ opacity: 1 }}
+      style={{ background: 'color-mix(in srgb, var(--bg) 70%, transparent)', backdropFilter: 'blur(4px)' }}>
+      <div className="relative flex items-center justify-center">
+        {pieces.map((_, i) => {
+          const ang = (i / pieces.length) * Math.PI * 2;
+          const dist = 80 + (i % 4) * 22;
+          return (
+            <motion.span key={i} className="absolute rounded-[2px]"
+              style={{ width: 8, height: 8, background: colors[i % colors.length] }}
+              initial={{ x: 0, y: 0, opacity: 1, scale: 1 }}
+              animate={{ x: Math.cos(ang) * dist, y: Math.sin(ang) * dist, opacity: 0, scale: 0.4, rotate: 180 }}
+              transition={{ duration: 0.9, ease: 'easeOut' }} />
+          );
+        })}
+        <motion.div className="w-20 h-20 rounded-full flex items-center justify-center"
+          style={{ background: '#30D158', boxShadow: '0 0 40px 4px color-mix(in srgb, #30D158 55%, transparent)' }}
+          initial={{ scale: 0, rotate: -30 }} animate={{ scale: 1, rotate: 0 }}
+          transition={{ type: 'spring', stiffness: 260, damping: 16 }}>
+          <motion.svg width="38" height="38" viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"
+            initial={{ pathLength: 0 }} animate={{ pathLength: 1 }} transition={{ delay: 0.18, duration: 0.4 }}>
+            <motion.path d="M20 6 9 17l-5-5" />
+          </motion.svg>
+        </motion.div>
+      </div>
+    </motion.div>
+  );
+}
+
 export default function AdminPage() {
   const [status, setStatus] = useState<Status>('loading');
   const [password, setPassword] = useState('');
@@ -165,6 +262,21 @@ export default function AdminPage() {
   // düzenlenen içeriği eski haline ezerdi).
   const goLogin = useCallback(() => setStatus('login'), []);
 
+  // Giriş kartı 3D eğilme (fareyle parallax).
+  const tiltX = useMotionValue(0);
+  const tiltY = useMotionValue(0);
+  const rotX = useSpring(useTransform(tiltY, [-0.5, 0.5], [7, -7]), { stiffness: 200, damping: 18 });
+  const rotY = useSpring(useTransform(tiltX, [-0.5, 0.5], [-7, 7]), { stiffness: 200, damping: 18 });
+  const onCardMove = (e: React.MouseEvent) => {
+    const r = e.currentTarget.getBoundingClientRect();
+    tiltX.set((e.clientX - r.left) / r.width - 0.5);
+    tiltY.set((e.clientY - r.top) / r.height - 0.5);
+  };
+  const onCardLeave = () => { tiltX.set(0); tiltY.set(0); };
+
+  const [capsOn, setCapsOn] = useState(false);   // caps lock uyarısı
+  const [loginOk, setLoginOk] = useState(false); // başarı animasyonu
+
   const loadPosts = useCallback(async () => {
     const res = await fetch('/api/admin/posts', { cache: 'no-store' });
     if (res.status === 401) { setStatus('login'); return; }
@@ -179,6 +291,14 @@ export default function AdminPage() {
     setMessages(data.messages ?? []);
     setUnread(data.unread ?? 0);
   }, []);
+
+  // Başarı animasyonunu göster, sonra veriyi yükleyip panele geç.
+  const finishLogin = useCallback(async () => {
+    setLoginOk(true);
+    await new Promise(r => setTimeout(r, 900));
+    await Promise.all([loadPosts(), loadMessages()]);
+    setStatus('ready');
+  }, [loadPosts, loadMessages]);
 
   useEffect(() => {
     (async () => {
@@ -220,8 +340,7 @@ export default function AdminPage() {
     setVerifying(false);
     if (res.ok) {
       setCode(''); setAttempts(0); setLockUntil(0);
-      await Promise.all([loadPosts(), loadMessages()]);
-      setStatus('ready');
+      await finishLogin();
     } else {
       // Gerçekte kod hatalı — ama kandırma için "şifre" diyoruz.
       const next = attempts + 1;
@@ -258,8 +377,7 @@ export default function AdminPage() {
           const s = await r.json().catch(() => ({}));
           if (s.status === 'approved' && s.ok) {
             setPushPending(false); setPushMsg('');
-            await Promise.all([loadPosts(), loadMessages()]);
-            setStatus('ready');
+            await finishLogin();
             return;
           }
           if (s.status === 'denied') { setPushMsg('Giriş telefonda reddedildi.'); setPushPending(false); return; }
@@ -613,10 +731,8 @@ export default function AdminPage() {
     const remaining = Math.max(0, MAX_ATTEMPTS - attempts);
     return (
       <main className="min-h-screen flex items-center justify-center px-5 relative overflow-hidden">
-        <div className="pointer-events-none absolute inset-0 flex items-center justify-center">
-          <div className="w-[420px] h-[420px] rounded-full opacity-[0.18] blur-[90px]"
-            style={{ background: 'radial-gradient(circle, var(--accent), transparent 70%)' }} />
-        </div>
+        <LoginBackground />
+        <AnimatePresence>{loginOk && <SuccessBurst />}</AnimatePresence>
 
         <div className="absolute left-0 right-0 top-24 z-10 px-5 md:px-8 pointer-events-none">
           <div className="max-w-3xl mx-auto relative">
@@ -636,11 +752,13 @@ export default function AdminPage() {
           </div>
         </div>
 
+        <motion.div className="relative z-10 w-full max-w-sm" style={{ rotateX: rotX, rotateY: rotY, transformPerspective: 1000 }}
+          onMouseMove={onCardMove} onMouseLeave={onCardLeave}>
         <motion.form onSubmit={submitCode}
           initial={{ opacity: 0, y: 16, scale: 0.98 }} animate={{ opacity: 1, y: 0, scale: 1 }}
           transition={{ duration: 0.5, ease: [0.23, 1, 0.32, 1] }}
-          className="relative z-10 w-full max-w-sm p-8 rounded-3xl border"
-          style={{ background: 'var(--bg-card)', borderColor: 'var(--border)', boxShadow: '0 24px 60px -20px rgba(0,0,0,0.45)' }}>
+          className="w-full p-8 rounded-3xl border backdrop-blur-xl"
+          style={{ background: 'color-mix(in srgb, var(--bg-card) 62%, transparent)', borderColor: 'color-mix(in srgb, var(--accent) 20%, var(--border))', boxShadow: '0 24px 60px -20px rgba(0,0,0,0.55), inset 0 1px 0 0 color-mix(in srgb, #fff 8%, transparent)' }}>
           <motion.button type="button" title="Telegram'dan giriş onayı gönder"
             aria-label="Telegram'dan giriş onayı gönder"
             onClick={() => { if (!pushPending && !locked) runApproval('/api/admin/telegram/login', '📨 Telegram\'a onay gönderildi, bekleniyor…'); }}
@@ -663,11 +781,12 @@ export default function AdminPage() {
               </span>
             )}
           </motion.button>
-          <h1 className="display-md mb-1.5 text-center" style={{ color: 'var(--fg)' }}>Merhaba Admin 👋</h1>
-          <p className="body-sm mb-7 text-center" style={{ color: 'var(--fg-3)' }}>Kontrol Merkezi&apos;ne hoş geldin. Giriş için şifreni gir lütfen.</p>
+          <LoginGreeting />
           <div className="relative mb-3">
             <input type={showPw ? 'text' : 'password'} value={code}
               onChange={e => { setCode(e.target.value); if (loginError) setLoginError(''); }}
+              onKeyUp={e => setCapsOn(typeof e.getModifierState === 'function' && e.getModifierState('CapsLock'))}
+              onKeyDown={e => setCapsOn(typeof e.getModifierState === 'function' && e.getModifierState('CapsLock'))}
               placeholder="••••••••" autoFocus autoComplete="off" className="input"
               disabled={locked} enterKeyHint="go" aria-label="Giriş şifresi"
               aria-invalid={!!loginError} style={{ paddingRight: 44 }} />
@@ -680,6 +799,15 @@ export default function AdminPage() {
               )}
             </button>
           </div>
+          <AnimatePresence>
+            {capsOn && (
+              <motion.p initial={{ opacity: 0, y: -4 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -4 }}
+                className="body-sm mb-3 flex items-center gap-1.5" style={{ color: '#FFD60A' }}>
+                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="m12 19 7-7 3 3-7 7-3-3z"/><path d="M18 13 9 4 4 9l9 9"/></svg>
+                Caps Lock açık
+              </motion.p>
+            )}
+          </AnimatePresence>
           <div role="alert" aria-live="assertive">
             {loginError && (
               <motion.p initial={{ opacity: 0, y: -4 }} animate={{ opacity: 1, y: 0 }}
@@ -718,6 +846,7 @@ export default function AdminPage() {
             {locked ? 'erişim geçici olarak kilitli' : 'güvenli bağlantı · yalnızca yetkili'}
           </div>
         </motion.form>
+        </motion.div>
       </main>
     );
   }
