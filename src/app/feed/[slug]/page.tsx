@@ -79,6 +79,19 @@ export default function FeedPostPage({ params }: { params: Promise<{ slug: strin
       .catch(() => setPost(null));
   }, [slug]);
 
+  // Görüntülenmeyi say — aynı tarayıcıda günde en fazla bir kez.
+  useEffect(() => {
+    if (!slug) return;
+    const key = `viewed:${slug}:${new Date().toISOString().slice(0, 10)}`;
+    try {
+      if (localStorage.getItem(key)) return;
+      localStorage.setItem(key, '1');
+    } catch { /* gizli mod vb. */ }
+    fetch('/api/views', {
+      method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ slug }),
+    }).catch(() => {});
+  }, [slug]);
+
   if (post === undefined) {
     return <main className="min-h-screen flex items-center justify-center">
       <Loader route={`/api/feed/${slug}`} />

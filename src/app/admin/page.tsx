@@ -12,10 +12,11 @@ import Loader from '@/components/Loader';
 type Status = 'loading' | 'setup' | 'login' | 'ready' | 'dberror';
 type View = 'list' | 'editor';
 type Tab = 'edit' | 'preview';
-type Section = 'home' | 'experience' | 'skills' | 'projects' | 'posts' | 'contact' | 'messages' | 'security';
+type Section = 'overview' | 'home' | 'experience' | 'skills' | 'projects' | 'posts' | 'contact' | 'messages' | 'security';
 
 // Tek satırda birleşik sekmeler — istenen sıra.
 const SECTIONS: [Section, string][] = [
+  ['overview',   'Özet'],
   ['home',       'Ana Sayfa'],
   ['experience', 'Deneyim'],
   ['skills',     'Donanım'],
@@ -133,7 +134,7 @@ export default function AdminPage() {
   const [nowTs, setNowTs] = useState(() => Date.now()); // kilit geri sayımı için tikler
 
   const [posts, setPosts] = useState<Post[]>([]);
-  const [section, setSection] = useState<Section>('home');
+  const [section, setSection] = useState<Section>('overview');
   const [messages, setMessages] = useState<Message[]>([]);
   const [unread, setUnread] = useState(0);
   const [openMsg, setOpenMsg] = useState<string | null>(null);
@@ -784,7 +785,10 @@ export default function AdminPage() {
               ))}
             </div>
 
-            {section === 'messages' ? (
+            {section === 'overview' ? (
+              <OverviewPanel posts={posts} messages={messages} unread={unread}
+                onAuthError={() => setStatus('login')} onGo={setSection} />
+            ) : section === 'messages' ? (
               <MessagesPanel messages={messages} openMsg={openMsg} onOpen={openMessage} onToggleRead={markRead} onDelete={confirmDeleteMessage} />
             ) : section === 'security' ? (
               <SecurityPanel notify={notify} onAuthError={() => setStatus('login')} />
@@ -1157,6 +1161,97 @@ function MessagesPanel({ messages, openMsg, onOpen, onToggleRead, onDelete }: {
           </div>
         );
       })}
+    </div>
+  );
+}
+
+// ── Özet (/overview) — panel giriş panosu ──
+function OverviewPanel({ posts, messages, unread, onAuthError, onGo }: {
+  posts: Post[]; messages: Message[]; unread: number;
+  onAuthError: () => void; onGo: (s: Section) => void;
+}) {
+  const [views, setViews] = useState<Record<string, number> | null>(null);
+  const [totalViews, setTotalViews] = useState(0);
+
+  useEffect(() => {
+    (async () => {
+      const res = await fetch('/api/admin/analytics', { cache: 'no-store' });
+      if (res.status === 401) return onAuthError();
+      const d = await res.json().catch(() => ({}));
+      setViews(d.views ?? {});
+      setTotalViews(d.total ?? 0);
+    })();
+  }, [onAuthError]);
+
+  const published = posts.filter(p => p.published !== false).length;
+  const drafts = posts.length - published;
+  const words = posts.reduce((s, p) => s + countWords(p), 0);
+  const ranked = [...posts]
+    .map(p => ({ p, v: views?.[p.slug] ?? 0 }))
+    .sort((a, b) => b.v - a.v)
+    .slice(0, 5);
+  const recent = [...messages]
+    .sort((a, b) => (b.createdAt || '').localeCompare(a.createdAt || ''))
+    .slice(0, 4);
+
+  return (
+    <div className="space-y-6">
+      {/* İstatistik kartları */}
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+        <Stat label="Görüntülenme" value={totalViews} accent />
+        <Stat label="Yazı" value={posts.length} />
+        <Stat label="Taslak" value={drafts} />
+        <Stat label="Kelime" value={words} />
+      </div>
+
+      <div className="grid md:grid-cols-2 gap-4">
+        {/* En çok okunanlar */}
+        <div className="p-4 rounded-xl border" style={{ background: 'var(--bg-card)', borderColor: 'var(--border)' }}>
+          <div className="flex items-center justify-between mb-3">
+            <p className="font-mono text-[11px] uppercase tracking-wide" style={{ color: 'var(--fg-3)' }}>En çok okunan</p>
+            <button onClick={() => onGo('posts')} className="font-mono text-[11px]" style={{ color: 'var(--accent)' }}>tümü →</button>
+          </div>
+          {ranked.length === 0 || ranked.every(r => r.v === 0) ? (
+            <p className="body-sm" style={{ color: 'var(--fg-3)' }}>{views === null ? 'Yükleniyor…' : 'Henüz görüntülenme yok.'}</p>
+          ) : (
+            <div className="space-y-2">
+              {ranked.map(({ p, v }) => (
+                <div key={p.slug} className="flex items-center gap-3">
+                  <div className="w-7 h-7 rounded-lg flex items-center justify-center text-sm flex-shrink-0"
+                    style={{ background: `linear-gradient(135deg, ${p.gradient[0]}, ${p.gradient[1]})` }}>{p.symbol}</div>
+                  <span className="flex-1 min-w-0 truncate text-sm" style={{ color: 'var(--fg)' }}>{p.title}</span>
+                  <span className="font-mono text-[12px] tabular-nums flex-shrink-0" style={{ color: 'var(--fg-2)' }}>{v.toLocaleString('tr-TR')}</span>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+
+        {/* Son mesajlar */}
+        <div className="p-4 rounded-xl border" style={{ background: 'var(--bg-card)', borderColor: 'var(--border)' }}>
+          <div className="flex items-center justify-between mb-3">
+            <p className="font-mono text-[11px] uppercase tracking-wide" style={{ color: 'var(--fg-3)' }}>
+              Son mesajlar{unread > 0 && <span className="ml-1.5 inline-flex items-center justify-center min-w-[16px] h-[16px] px-1 rounded-full text-[9px] font-bold align-middle" style={{ background: 'var(--accent)', color: '#fff' }}>{unread}</span>}
+            </p>
+            <button onClick={() => onGo('messages')} className="font-mono text-[11px]" style={{ color: 'var(--accent)' }}>tümü →</button>
+          </div>
+          {recent.length === 0 ? (
+            <p className="body-sm" style={{ color: 'var(--fg-3)' }}>Henüz mesaj yok.</p>
+          ) : (
+            <div className="space-y-2.5">
+              {recent.map(m => (
+                <div key={m.id} className="min-w-0">
+                  <div className="flex items-center gap-2">
+                    {!m.read && <span className="w-1.5 h-1.5 rounded-full flex-shrink-0" style={{ background: 'var(--accent)' }} />}
+                    <span className="text-sm font-medium truncate" style={{ color: 'var(--fg)' }}>{m.name}</span>
+                  </div>
+                  <p className="body-sm truncate" style={{ color: 'var(--fg-3)' }}>{m.message}</p>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+      </div>
     </div>
   );
 }
