@@ -10,16 +10,6 @@ export type SkillsDoc = { _id: string } & SkillsContent;
 // Sayfa içerikleri: sayfa başına bir doküman { _id: 'home'|…, tr, en }
 export type ContentDoc = { _id: PageKey; tr: unknown; en: unknown };
 
-// Kişisel cüzdan: tek doküman { _id: 'wallet', usd, eur, gold }
-export type FinanceDoc = { _id: string; usd: number; eur: number; gold: number };
-
-// Günlük fiyat anlık görüntüsü: günde bir doküman { _id: 'YYYY-MM-DD', ... }
-export type FinSnapshotDoc = { _id: string; date: string; usd: number; eur: number; gold: number };
-
-// Saat-içi (intraday) görüntü: dakikada bir doküman { _id: 'YYYY-MM-DDTHH:MM', at, ... }
-// `at` üzerinde TTL ile ~35 gün sonra otomatik silinir.
-export type FinIntradayDoc = { _id: string; at: Date; usd: number; eur: number; gold: number };
-
 // Bağlantı bilgisi doğrudan kodda — hiçbir ortam değişkeni (env) gerekmez.
 // Böylece Vercel'de ayar yapmadan, deploy ettiğin anda çalışır.
 // ⚠️ GÜVENLİK: Bu dosya (şifre dahil) git deposuna gider. Depo PRIVATE olmalı.
@@ -59,19 +49,4 @@ export async function getSkillsCollection(): Promise<Collection<SkillsDoc>> {
 export async function getContentCollection(): Promise<Collection<ContentDoc>> {
   const db = await getDb();
   return db.collection<ContentDoc>('content');
-}
-
-export async function getFinanceCollection(): Promise<Collection<FinanceDoc>> {
-  const db = await getDb();
-  return db.collection<FinanceDoc>('finance');
-}
-
-export async function getFinanceHistoryCollection(): Promise<Collection<FinSnapshotDoc>> {
-  const db = await getDb();
-  return db.collection<FinSnapshotDoc>('finance_history');
-}
-
-export async function getFinanceIntradayCollection(): Promise<Collection<FinIntradayDoc>> {
-  const db = await getDb();
-  return db.collection<FinIntradayDoc>('finance_intraday');
 }
