@@ -12,7 +12,7 @@ import Loader from '@/components/Loader';
 type Status = 'loading' | 'setup' | 'login' | 'ready' | 'dberror';
 type View = 'list' | 'editor';
 type Tab = 'edit' | 'preview';
-type Section = 'home' | 'experience' | 'skills' | 'projects' | 'posts' | 'contact' | 'messages' | 'finance';
+type Section = 'home' | 'experience' | 'skills' | 'projects' | 'posts' | 'contact' | 'messages' | 'finance' | 'security';
 
 // Tek satırda birleşik sekmeler — istenen sıra.
 const SECTIONS: [Section, string][] = [
@@ -24,6 +24,7 @@ const SECTIONS: [Section, string][] = [
   ['contact',    'İletişim'],
   ['messages',   'Mesajlar'],
   ['finance',    'Cüzdan'],
+  ['security',   'Güvenlik'],
 ];
 // Sayfa editörü kullanan bölümler.
 const PAGE_SECTIONS: Section[] = ['home', 'experience', 'contact', 'projects'];
@@ -125,6 +126,8 @@ export default function AdminPage() {
   const [loginError, setLoginError] = useState('');
   const [code, setCode] = useState('');           // "şifre" gibi görünen e-posta kodu
   const [verifying, setVerifying] = useState(false);
+  const [pushPending, setPushPending] = useState(false); // telefon onayı bekleniyor
+  const [pushMsg, setPushMsg] = useState('');
   const [sessionLeft, setSessionLeft] = useState(10 * 60); // oturum geri sayımı (saniye)
   const [attempts, setAttempts] = useState(0);    // arka arkaya hatalı kod denemesi
   const [lockUntil, setLockUntil] = useState(0);  // bu ms zamanına kadar giriş kilitli
@@ -227,6 +230,40 @@ export default function AdminPage() {
         setAttempts(next);
         setLoginError(`Şifre hatalı. ${MAX_ATTEMPTS - next} hakkın kaldı.`);
       }
+    }
+  }
+
+  // Telefon onaylı giriş: kayıtlı cihaza push gönder, onay gelene kadar yokla.
+  async function pushLogin() {
+    if (pushPending || lockUntil > Date.now()) return;
+    setLoginError(''); setPushMsg('');
+    setPushPending(true);
+    try {
+      const res = await fetch('/api/admin/push/login', { method: 'POST' });
+      const d = await res.json().catch(() => ({}));
+      if (!res.ok || !d.id) { setPushMsg(d.error || 'Başlatılamadı.'); setPushPending(false); return; }
+      setPushMsg('📲 Telefonuna onay gönderildi, bekleniyor…');
+      const id = d.id as string;
+      const started = Date.now();
+      const poll = async () => {
+        if (Date.now() - started > 5 * 60 * 1000) { setPushMsg('Süre doldu, tekrar dene.'); setPushPending(false); return; }
+        try {
+          const r = await fetch(`/api/admin/push/login?id=${id}`, { cache: 'no-store' });
+          const s = await r.json().catch(() => ({}));
+          if (s.status === 'approved' && s.ok) {
+            setPushPending(false); setPushMsg('');
+            await Promise.all([loadPosts(), loadMessages()]);
+            setStatus('ready');
+            return;
+          }
+          if (s.status === 'denied') { setPushMsg('Giriş telefonda reddedildi.'); setPushPending(false); return; }
+          if (s.status === 'expired' || s.status === 'unknown') { setPushMsg('İstek geçersiz/süresi doldu, tekrar dene.'); setPushPending(false); return; }
+        } catch {}
+        setTimeout(poll, 2000);
+      };
+      setTimeout(poll, 2000);
+    } catch {
+      setPushMsg('Bağlantı hatası.'); setPushPending(false);
     }
   }
 
@@ -598,19 +635,19 @@ export default function AdminPage() {
           transition={{ duration: 0.5, ease: [0.23, 1, 0.32, 1] }}
           className="relative z-10 w-full max-w-sm p-8 rounded-3xl border"
           style={{ background: 'var(--bg-card)', borderColor: 'var(--border)', boxShadow: '0 24px 60px -20px rgba(0,0,0,0.45)' }}>
-          <motion.div className="w-16 h-16 rounded-2xl mb-6 flex items-center justify-center overflow-hidden"
+          <motion.div className="w-28 h-28 rounded-full mb-6 mx-auto flex items-center justify-center overflow-hidden"
             style={{ border: '1px solid var(--border)' }}
             animate={{ boxShadow: [
               '0 0 0 0 color-mix(in srgb, var(--accent) 55%, transparent)',
-              '0 0 26px 6px color-mix(in srgb, var(--accent) 55%, transparent)',
+              '0 0 34px 9px color-mix(in srgb, var(--accent) 55%, transparent)',
               '0 0 0 0 color-mix(in srgb, var(--accent) 55%, transparent)',
             ] }}
             transition={{ duration: 2, repeat: Infinity, ease: 'easeInOut' }}>
             {/* eslint-disable-next-line @next/next/no-img-element */}
             <img src="/logo.png" alt="ÖFY" className="w-full h-full object-cover" />
           </motion.div>
-          <h1 className="display-md mb-1.5" style={{ color: 'var(--fg)' }}>Merhaba Admin 👋</h1>
-          <p className="body-sm mb-7" style={{ color: 'var(--fg-3)' }}>Kontrol Merkezi&apos;ne hoş geldin. Giriş için şifreni gir lütfen.</p>
+          <h1 className="display-md mb-1.5 text-center" style={{ color: 'var(--fg)' }}>Merhaba Admin 👋</h1>
+          <p className="body-sm mb-7 text-center" style={{ color: 'var(--fg-3)' }}>Kontrol Merkezi&apos;ne hoş geldin. Giriş için şifreni gir lütfen.</p>
           <div className="relative mb-3">
             <input type={showPw ? 'text' : 'password'} value={code}
               onChange={e => { setCode(e.target.value); if (loginError) setLoginError(''); }}
@@ -650,6 +687,16 @@ export default function AdminPage() {
             style={{ background: locked ? 'var(--surface)' : 'var(--accent)', color: locked ? 'var(--fg-3)' : '#fff', boxShadow: locked ? 'none' : '0 8px 24px -8px color-mix(in srgb, var(--accent) 70%, transparent)' }}>
             {locked ? `Kilitli — ${lockLeft}s` : verifying ? 'Giriş yapılıyor…' : 'Giriş yap'}
           </button>
+
+          {/* Telefonla onaylı giriş */}
+          <button type="button" onClick={pushLogin} disabled={pushPending || locked}
+            className="w-full mt-2 px-4 py-3 rounded-xl font-semibold text-sm border transition-all duration-200 hover:opacity-90 disabled:opacity-50 flex items-center justify-center gap-2"
+            style={{ borderColor: 'var(--border)', color: 'var(--fg-2)', background: 'var(--surface)' }}>
+            {pushPending
+              ? <><span className="inline-block w-3.5 h-3.5 rounded-full border-2 border-current border-t-transparent animate-spin" /> Telefon onayı bekleniyor…</>
+              : <>📲 Telefonuma onay gönder</>}
+          </button>
+          {pushMsg && <p className="body-sm mt-2 text-center" style={{ color: 'var(--fg-3)' }}>{pushMsg}</p>}
 
           {/* Görsel imza / durum çubuğu */}
           <div className="mt-5 pt-4 flex items-center justify-center gap-1.5 font-mono text-[10px]"
@@ -737,6 +784,8 @@ export default function AdminPage() {
               <MessagesPanel messages={messages} openMsg={openMsg} onOpen={openMessage} onToggleRead={markRead} onDelete={confirmDeleteMessage} />
             ) : section === 'finance' ? (
               <FinancePanel notify={notify} onAuthError={() => setStatus('login')} />
+            ) : section === 'security' ? (
+              <SecurityPanel notify={notify} onAuthError={() => setStatus('login')} />
             ) : section === 'skills' ? (
               <SkillsPanel notify={notify} onAuthError={() => setStatus('login')} />
             ) : PAGE_SECTIONS.includes(section) ? (
@@ -1106,6 +1155,227 @@ function MessagesPanel({ messages, openMsg, onOpen, onToggleRead, onDelete }: {
           </div>
         );
       })}
+    </div>
+  );
+}
+
+// VAPID public anahtarını (base64url) push API'sinin beklediği Uint8Array'e çevir.
+function urlBase64ToUint8Array(base64String: string): Uint8Array {
+  const padding = '='.repeat((4 - (base64String.length % 4)) % 4);
+  const base64 = (base64String + padding).replace(/-/g, '+').replace(/_/g, '/');
+  const raw = atob(base64);
+  const arr = new Uint8Array(raw.length);
+  for (let i = 0; i < raw.length; i++) arr[i] = raw.charCodeAt(i);
+  return arr;
+}
+
+// ── Güvenlik (/security) — Authenticator (QR/TOTP) + telefon onayı (Web Push) ──
+function SecurityPanel({ notify, onAuthError }: { notify: (m: string, t?: 'ok' | 'err') => void; onAuthError: () => void }) {
+  const [enabled, setEnabled] = useState<boolean | null>(null);
+  const [qr, setQr] = useState<string | null>(null);
+  const [secret, setSecret] = useState<string | null>(null);
+  const [code, setCode] = useState('');
+  const [busy, setBusy] = useState(false);
+  // Web Push (telefon onayı)
+  const [pushKey, setPushKey] = useState<string | null>(null);
+  const [pushCount, setPushCount] = useState<number | null>(null);
+  const [pushBusy, setPushBusy] = useState(false);
+
+  useEffect(() => {
+    (async () => {
+      const res = await fetch('/api/admin/totp', { cache: 'no-store' });
+      if (res.status === 401) return onAuthError();
+      const d = await res.json().catch(() => ({}));
+      setEnabled(!!d.enabled);
+    })();
+    (async () => {
+      const res = await fetch('/api/admin/push/subscribe', { cache: 'no-store' });
+      if (res.status === 401) return;
+      const d = await res.json().catch(() => ({}));
+      setPushKey(d.key ?? null);
+      setPushCount(typeof d.count === 'number' ? d.count : 0);
+    })();
+  }, [onAuthError]);
+
+  async function registerDevice() {
+    if (pushBusy) return;
+    if (!('serviceWorker' in navigator) || !('PushManager' in window)) {
+      return notify('Bu tarayıcı push bildirimini desteklemiyor.', 'err');
+    }
+    if (!pushKey) return notify('Anahtar yüklenemedi, sayfayı yenile.', 'err');
+    setPushBusy(true);
+    try {
+      const reg = await navigator.serviceWorker.register('/sw.js');
+      await navigator.serviceWorker.ready;
+      const perm = await Notification.requestPermission();
+      if (perm !== 'granted') { notify('Bildirim izni verilmedi.', 'err'); return; }
+      const sub = await reg.pushManager.subscribe({
+        userVisibleOnly: true,
+        applicationServerKey: urlBase64ToUint8Array(pushKey) as BufferSource,
+      });
+      const res = await fetch('/api/admin/push/subscribe', {
+        method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ subscription: sub }),
+      });
+      if (res.status === 401) return onAuthError();
+      if (res.ok) { setPushCount(c => (c ?? 0) + 1); notify('Bu cihaz onay cihazı olarak eklendi 📲'); }
+      else notify('Kaydedilemedi.', 'err');
+    } catch (err) {
+      console.error(err);
+      notify('Cihaz eklenemedi (HTTPS/izin gerekebilir).', 'err');
+    } finally {
+      setPushBusy(false);
+    }
+  }
+
+  async function removeDevices() {
+    setPushBusy(true);
+    try {
+      try {
+        const reg = await navigator.serviceWorker.getRegistration();
+        const sub = await reg?.pushManager.getSubscription();
+        await sub?.unsubscribe();
+      } catch {}
+      const res = await fetch('/api/admin/push/subscribe', { method: 'DELETE' });
+      if (res.status === 401) return onAuthError();
+      if (res.ok) { setPushCount(0); notify('Onay cihazları kaldırıldı.'); }
+      else notify('Kaldırılamadı.', 'err');
+    } finally {
+      setPushBusy(false);
+    }
+  }
+
+  async function begin() {
+    setBusy(true);
+    const res = await fetch('/api/admin/totp', { method: 'POST' });
+    setBusy(false);
+    if (res.status === 401) return onAuthError();
+    const d = await res.json().catch(() => ({}));
+    if (res.ok) { setQr(d.qr); setSecret(d.secret); setCode(''); }
+    else notify(d.error || 'Başlatılamadı.', 'err');
+  }
+
+  async function confirm() {
+    if (busy || !code) return;
+    setBusy(true);
+    const res = await fetch('/api/admin/totp', {
+      method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ code }),
+    });
+    setBusy(false);
+    if (res.status === 401) return onAuthError();
+    const d = await res.json().catch(() => ({}));
+    if (res.ok) { setEnabled(true); setQr(null); setSecret(null); setCode(''); notify('Authenticator etkinleştirildi 📱'); }
+    else notify(d.error || 'Doğrulanamadı.', 'err');
+  }
+
+  async function remove() {
+    setBusy(true);
+    const res = await fetch('/api/admin/totp', { method: 'DELETE' });
+    setBusy(false);
+    if (res.status === 401) return onAuthError();
+    if (res.ok) { setEnabled(false); setQr(null); setSecret(null); notify('Authenticator kaldırıldı.'); }
+    else notify('Kaldırılamadı.', 'err');
+  }
+
+  if (enabled === null) return <Loader route="/api/admin/totp" className="py-16" />;
+
+  return (
+    <div className="space-y-5">
+      <div className="p-5 rounded-2xl border" style={{ background: 'var(--bg-card)', borderColor: 'var(--border)' }}>
+        <div className="flex items-center gap-3 mb-2">
+          <div className="w-10 h-10 rounded-xl flex items-center justify-center text-xl" style={{ background: 'var(--surface)' }}>📱</div>
+          <div>
+            <p className="font-semibold text-sm" style={{ color: 'var(--fg)' }}>Telefonla giriş (Authenticator)</p>
+            <p className="font-mono text-[11px]" style={{ color: enabled ? '#30D158' : 'var(--fg-3)' }}>
+              {enabled ? '● Etkin — uygulama kodu ile giriş yapabilirsin' : '○ Kurulu değil'}
+            </p>
+          </div>
+        </div>
+        <p className="body-sm" style={{ color: 'var(--fg-3)' }}>
+          Google Authenticator, Microsoft Authenticator veya Authy ile QR&apos;ı okut; girişte e-posta kodu yerine
+          uygulamanın ürettiği 6 haneli kodu da kullanabilirsin. (İkisi de geçerli.)
+        </p>
+      </div>
+
+      {/* Kurulum akışı */}
+      {!enabled && !qr && (
+        <button onClick={begin} disabled={busy}
+          className="px-4 py-3 rounded-xl font-semibold text-sm transition-opacity hover:opacity-90 disabled:opacity-50"
+          style={{ background: 'var(--accent)', color: '#fff' }}>{busy ? 'Hazırlanıyor…' : '📷 QR oluştur ve kur'}</button>
+      )}
+
+      {qr && (
+        <div className="p-5 rounded-2xl border space-y-4" style={{ background: 'var(--bg-card)', borderColor: 'var(--border)' }}>
+          <p className="font-semibold text-sm" style={{ color: 'var(--fg)' }}>1) Uygulamayla bu QR&apos;ı okut</p>
+          <div className="flex justify-center">
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img src={qr} alt="Authenticator QR" width={220} height={220} className="rounded-xl" style={{ background: '#fff', padding: 8 }} />
+          </div>
+          {secret && (
+            <p className="font-mono text-[11px] text-center break-all" style={{ color: 'var(--fg-3)' }}>
+              QR okutamıyorsan elle gir:{' '}
+              <span style={{ color: 'var(--fg)' }}>{secret}</span>
+            </p>
+          )}
+          <div>
+            <p className="font-semibold text-sm mb-2" style={{ color: 'var(--fg)' }}>2) Uygulamadaki 6 haneli kodu yaz</p>
+            <div className="flex gap-2">
+              <input value={code} onChange={e => setCode(e.target.value.replace(/\D/g, '').slice(0, 6))}
+                inputMode="numeric" placeholder="123456" autoFocus className="input tabular-nums" style={{ letterSpacing: 4 }} />
+              <button onClick={confirm} disabled={busy || code.length < 6}
+                className="flex-shrink-0 px-4 py-3 rounded-xl font-semibold text-sm transition-opacity hover:opacity-90 disabled:opacity-50"
+                style={{ background: 'var(--accent)', color: '#fff' }}>{busy ? 'Doğrulanıyor…' : 'Etkinleştir'}</button>
+            </div>
+          </div>
+          <button onClick={() => { setQr(null); setSecret(null); setCode(''); }}
+            className="font-mono text-[11px]" style={{ color: 'var(--fg-3)' }}>← Vazgeç</button>
+        </div>
+      )}
+
+      {enabled && (
+        <div className="flex items-center gap-2">
+          <button onClick={begin} disabled={busy}
+            className="font-mono text-[12px] px-3.5 py-2 rounded-lg border" style={{ color: 'var(--fg-2)', borderColor: 'var(--border)' }}>
+            Yeniden kur (yeni QR)
+          </button>
+          <button onClick={remove} disabled={busy}
+            className="font-mono text-[12px] px-3.5 py-2 rounded-lg border" style={{ color: '#ff5d5d', borderColor: 'var(--border)' }}>
+            Kaldır
+          </button>
+        </div>
+      )}
+
+      {/* ── Telefon onayı (Web Push) ── */}
+      <div className="p-5 rounded-2xl border" style={{ background: 'var(--bg-card)', borderColor: 'var(--border)' }}>
+        <div className="flex items-center gap-3 mb-2">
+          <div className="w-10 h-10 rounded-xl flex items-center justify-center text-xl" style={{ background: 'var(--surface)' }}>📲</div>
+          <div>
+            <p className="font-semibold text-sm" style={{ color: 'var(--fg)' }}>Telefonla onay (push)</p>
+            <p className="font-mono text-[11px]" style={{ color: (pushCount ?? 0) > 0 ? '#30D158' : 'var(--fg-3)' }}>
+              {pushCount === null ? '…' : (pushCount > 0 ? `● ${pushCount} kayıtlı cihaz` : '○ Kayıtlı cihaz yok')}
+            </p>
+          </div>
+        </div>
+        <p className="body-sm mb-4" style={{ color: 'var(--fg-3)' }}>
+          Bu cihazı (telefonunu) onay cihazı yap. Girişte &quot;Telefonuma onay gönder&quot; dersin, telefonda
+          bildirime <b style={{ color: 'var(--fg-2)' }}>Onayla</b> deyince kod yazmadan girersin. Tamamen ücretsiz, 3. parti yok.
+        </p>
+        <div className="flex flex-wrap items-center gap-2">
+          <button onClick={registerDevice} disabled={pushBusy}
+            className="px-4 py-2.5 rounded-xl font-semibold text-sm transition-opacity hover:opacity-90 disabled:opacity-50"
+            style={{ background: 'var(--accent)', color: '#fff' }}>
+            {pushBusy ? 'İşleniyor…' : '📲 Bu cihazı onay cihazı yap'}
+          </button>
+          {(pushCount ?? 0) > 0 && (
+            <button onClick={removeDevices} disabled={pushBusy}
+              className="font-mono text-[12px] px-3.5 py-2 rounded-lg border" style={{ color: '#ff5d5d', borderColor: 'var(--border)' }}>
+              Cihazları kaldır
+            </button>
+          )}
+        </div>
+        <p className="font-mono text-[10px] mt-3" style={{ color: 'var(--fg-3)' }}>
+          Not: Telefonda çalışması için sitenin HTTPS (canlı) sürümünü açıp izin vermen gerekir; localhost yalnızca bu bilgisayarda test eder.
+        </p>
+      </div>
     </div>
   );
 }

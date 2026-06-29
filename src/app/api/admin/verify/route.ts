@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { verifyLoginCode, createSessionToken, SESSION_COOKIE, SESSION_MAX_AGE } from '@/lib/auth';
+import { verifyLoginCode, verifyTotp, createSessionToken, SESSION_COOKIE, SESSION_MAX_AGE } from '@/lib/auth';
 
 export const dynamic = 'force-dynamic';
 
@@ -14,7 +14,9 @@ export async function POST(req: NextRequest) {
   }
 
   try {
-    if (!code || !(await verifyLoginCode(code))) {
+    // Hem authenticator (TOTP) kodu hem e-posta kodu kabul edilir.
+    const ok = !!code && ((await verifyTotp(code)) || (await verifyLoginCode(code)));
+    if (!ok) {
       return NextResponse.json({ error: 'Kod hatalı veya süresi dolmuş.' }, { status: 400 });
     }
     const token = await createSessionToken();

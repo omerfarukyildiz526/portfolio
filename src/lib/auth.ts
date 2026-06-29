@@ -1,7 +1,11 @@
 import 'server-only';
 import { randomBytes, scryptSync, timingSafeEqual, createHmac } from 'crypto';
 import { cookies } from 'next/headers';
+import { authenticator } from 'otplib';
 import { getDb } from './mongodb';
+
+// Saat kaymasına tolerans: ±1 adım (±30 sn).
+authenticator.options = { window: 1 };
 
 export const SESSION_COOKIE = 'admin_session';
 // Oturum 10 dk geçerli. Aktif kullanımda /api/admin/session her çağrıldığında
@@ -16,6 +20,8 @@ interface AdminDoc {
   _id: string; salt: string; hash: string; secret: string;
   // 2 adımlı doğrulama (e-posta kodu) için geçici alanlar:
   codeHash?: string; codeExpires?: number; codeAttempts?: number;
+  // Authenticator (TOTP): aktif gizli anahtar + kurulum sırasında bekleyen (onaysız) anahtar.
+  totpSecret?: string; totpPending?: string;
 }
 
 const CODE_TTL = 10 * 60 * 1000;   // kod 10 dakika geçerli
@@ -117,6 +123,53 @@ export async function verifyLoginCode(code: string): Promise<boolean> {
   if (ok) { await clear(); return true; }
   await col.updateOne({ _id: 'admin' }, { $inc: { codeAttempts: 1 } });
   return false;
+}
+
+// ── Authenticator (TOTP / QR) ──
+
+/** Authenticator kurulu mu? */
+export async function totpEnabled(): Promise<boolean> {
+  const doc = await getAdmin();
+  return !!doc?.totpSecret;
+}
+
+/** Kurulumu başlat: yeni gizli anahtar üret, "bekleyen" olarak sakla ve
+ *  authenticator uygulamasına okutulacak otpauth URI'sini döndür. */
+export async function beginTotpEnroll(): Promise<{ secret: string; otpauth: string } | null> {
+  const doc = await getAdmin();
+  if (!doc) return null;
+  const secret = authenticator.generateSecret();
+  const account = process.env.ADMIN_2FA_EMAIL || 'admin';
+  const issuer = 'OFY Admin';
+  const otpauth = authenticator.keyuri(account, issuer, secret);
+  const col = await settings();
+  await col.updateOne({ _id: 'admin' }, { $set: { totpPending: secret } });
+  return { secret, otpauth };
+}
+
+/** Bekleyen anahtarı, uygulamadan girilen kodla doğrula; doğruysa aktifleştir. */
+export async function confirmTotpEnroll(code: string): Promise<boolean> {
+  const col = await settings();
+  const doc = await col.findOne({ _id: 'admin' });
+  if (!doc?.totpPending) return false;
+  const ok = authenticator.verify({ token: code.trim(), secret: doc.totpPending });
+  if (!ok) return false;
+  await col.updateOne({ _id: 'admin' }, { $set: { totpSecret: doc.totpPending }, $unset: { totpPending: '' } });
+  return true;
+}
+
+/** Authenticator'ı kaldır. */
+export async function disableTotp(): Promise<void> {
+  const col = await settings();
+  await col.updateOne({ _id: 'admin' }, { $unset: { totpSecret: '', totpPending: '' } });
+}
+
+/** Girişte: uygulamanın ürettiği 6 haneli kodu doğrula. */
+export async function verifyTotp(code: string): Promise<boolean> {
+  const doc = await getAdmin();
+  if (!doc?.totpSecret) return false;
+  try { return authenticator.verify({ token: code.trim(), secret: doc.totpSecret }); }
+  catch { return false; }
 }
 
 async function getSecret(): Promise<string | null> {
