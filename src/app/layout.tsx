@@ -55,6 +55,51 @@ export const metadata: Metadata = {
   },
 };
 
+// AI / cevap motorlarının kişiyi ve siteyi anlaması için yapısal veri (JSON-LD).
+// Bu, ChatGPT, Perplexity, Gemini gibi araçların doğru bilgiyle alıntı yapmasını sağlar.
+const SITE_URL = "https://omerfarukyildiz.tech";
+const jsonLd = {
+  "@context": "https://schema.org",
+  "@graph": [
+    {
+      "@type": "Person",
+      "@id": `${SITE_URL}/#person`,
+      name: "Ömer Faruk Yıldız",
+      url: SITE_URL,
+      jobTitle: "Backend Developer / Yazılım Uzmanı",
+      worksFor: { "@type": "Organization", name: "Barsan Global Lojistik" },
+      nationality: "Turkish",
+      description:
+        "Python, C# / .NET ve RPA teknolojileriyle backend servisleri ve süreç otomasyonu geliştiren yazılım uzmanı.",
+      knowsAbout: [
+        "Backend Development", "Python", "C#", ".NET", "RPA",
+        "Selenium", "SAP RFC", "REST API", "Süreç Otomasyonu", "MongoDB",
+      ],
+      sameAs: [
+        "https://github.com/OmerFaruk-YILDIZ",
+        "https://www.linkedin.com/in/omerfaruk-yildiz/",
+      ],
+    },
+    {
+      "@type": "WebSite",
+      "@id": `${SITE_URL}/#website`,
+      url: SITE_URL,
+      name: "Ömer Faruk Yıldız | Backend Developer Portfolio",
+      inLanguage: "tr-TR",
+      publisher: { "@id": `${SITE_URL}/#person` },
+    },
+    {
+      "@type": "ProfilePage",
+      "@id": `${SITE_URL}/#profilepage`,
+      url: SITE_URL,
+      name: "Ömer Faruk Yıldız | Backend Developer Portfolio",
+      isPartOf: { "@id": `${SITE_URL}/#website` },
+      about: { "@id": `${SITE_URL}/#person` },
+      inLanguage: "tr-TR",
+    },
+  ],
+};
+
 export default function RootLayout({
   children,
 }: Readonly<{ children: React.ReactNode }>) {
@@ -65,6 +110,12 @@ export default function RootLayout({
       data-scroll-behavior="smooth"
       className={`${inter.variable} ${jetbrainsMono.variable}`}
     >
+      <head>
+        <script
+          type="application/ld+json"
+          dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
+        />
+      </head>
       <body>
         <ClientShell>{children}</ClientShell>
         <VisitTracker />
