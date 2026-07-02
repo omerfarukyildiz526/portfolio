@@ -3,8 +3,10 @@
 import { motion, useMotionValue, useSpring, AnimatePresence } from 'framer-motion';
 import { useState, useEffect } from 'react';
 import Link from 'next/link';
-import { useT } from '@/lib/i18n';
+import { useT, useLang } from '@/lib/i18n';
 import { usePageContent } from '@/lib/use-page-content';
+import ApiDemo from '@/components/ApiDemo';
+import ArchitectureDiagram from '@/components/ArchitectureDiagram';
 
 const fade = (delay = 0) => ({
   initial:    { opacity: 0, y: 18 },
@@ -194,6 +196,8 @@ function EndpointCard({
 
 export default function HomePage() {
   const t  = useT();
+  const { lang } = useLang();
+  const tr = lang === 'tr';
   const live = usePageContent('home');
   const th = {
     ...t.home,
@@ -226,6 +230,14 @@ export default function HomePage() {
           </p>
         </motion.div>
 
+        {/* Live API response — reinforces the API/terminal motif */}
+        <motion.div {...fade(0.2)} className="mb-10">
+          <p className="label mb-4" style={{ color: 'var(--fg-3)' }}>
+            {tr ? '// CANLI YANIT' : '// LIVE RESPONSE'}
+          </p>
+          <ApiDemo />
+        </motion.div>
+
         {/* API Routes — the signature element */}
         <motion.div {...fade(0.25)} className="mb-10">
           <p className="label mb-4" style={{ color: 'var(--fg-3)' }}>
@@ -241,8 +253,21 @@ export default function HomePage() {
           </div>
         </motion.div>
 
+        {/* System architecture — interactive data-flow diagram */}
+        <motion.div {...fade(0.6)} className="mb-10">
+          <p className="label mb-1.5" style={{ color: 'var(--fg-3)' }}>
+            {tr ? '// SİSTEM MİMARİSİ' : '// SYSTEM ARCHITECTURE'}
+          </p>
+          <p className="body-sm mb-4" style={{ color: 'var(--fg-3)' }}>
+            {tr
+              ? 'Verinin SAP, servisler ve operasyon arasında nasıl aktığı — sürükle, yakınlaştır.'
+              : 'How data flows between SAP, services and operations — drag, zoom.'}
+          </p>
+          <ArchitectureDiagram />
+        </motion.div>
+
         {/* Tags */}
-        <motion.div {...fade(0.62)} className="flex flex-wrap gap-2">
+        <motion.div {...fade(0.72)} className="flex flex-wrap gap-2">
           {th.tags.map((tag) => (
             <span key={tag} className="tag">{tag}</span>
           ))}

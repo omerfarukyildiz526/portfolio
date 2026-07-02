@@ -5,7 +5,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { Post, ContentBlock } from '@/lib/posts';
 import { useLang } from '@/lib/i18n';
 import { MD } from '@/components/Markdown';
-import Loader from '@/components/Loader';
+import JsonSkeleton from '@/components/JsonSkeleton';
 import Code from '@/components/Code';
 import Typewriter from '@/components/Typewriter';
 
@@ -222,6 +222,31 @@ export default function FeedPage() {
     return sorted;
   }, [posts, activeTag, query, sort]);
 
+  // Liste için Blog + ItemList yapısal verisi (JSON-LD). Google'ın yazıları
+  // tek tek keşfetmesi ve zengin sonuç göstermesi için — /logs/[slug]'a bağlar.
+  const blogJsonLd = useMemo(() => {
+    if (!posts.length) return null;
+    const SITE = 'https://omerfarukyildiz.tech';
+    return {
+      '@context': 'https://schema.org',
+      '@type': 'Blog',
+      '@id': `${SITE}/logs#blog`,
+      url: `${SITE}/logs`,
+      name: 'Ömer Faruk Yıldız — Logs',
+      description: 'Backend, RPA ve sistem entegrasyonu üzerine programcı notları.',
+      inLanguage: 'tr-TR',
+      publisher: { '@id': `${SITE}/#person` },
+      blogPost: posts.map(p => ({
+        '@type': 'BlogPosting',
+        headline: p.title,
+        description: p.excerpt,
+        datePublished: p.date,
+        url: `${SITE}/logs/${p.slug}`,
+        keywords: p.tags.join(', '),
+      })),
+    };
+  }, [posts]);
+
   // Response-meta: kayıt sayısı, etiket sayısı, son güncelleme (göreli).
   const lastUpdated = useMemo(() => {
     if (!posts.length) return null;
@@ -299,6 +324,12 @@ export default function FeedPage() {
 
   return (
     <main className="min-h-screen pt-24 pb-32 px-5 md:px-8">
+      {blogJsonLd && (
+        <script
+          type="application/ld+json"
+          dangerouslySetInnerHTML={{ __html: JSON.stringify(blogJsonLd) }}
+        />
+      )}
       <div className="max-w-3xl mx-auto relative">
 
         <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }}
@@ -428,7 +459,7 @@ export default function FeedPage() {
         )}
 
         {loading ? (
-          <Loader route="/api/logs" />
+          <JsonSkeleton rows={5} />
         ) : posts.length === 0 ? (
           /* ── Boş durum ── */
           <div className="text-center py-16">
@@ -456,10 +487,17 @@ export default function FeedPage() {
               onMouseEnter={e => (e.currentTarget.style.borderColor = 'var(--border-hover)')}
               onMouseLeave={e => (e.currentTarget.style.borderColor = 'var(--border)')}
             >
-              <div className="w-11 h-11 rounded-xl flex items-center justify-center text-xl flex-shrink-0"
-                style={{ background: `linear-gradient(135deg, ${post.gradient[0]}, ${post.gradient[1]})` }}>
-                {post.symbol}
-              </div>
+              {post.cover ? (
+                /* eslint-disable-next-line @next/next/no-img-element */
+                <img src={post.cover} alt="" loading="lazy"
+                  className="w-11 h-11 rounded-xl object-cover flex-shrink-0"
+                  style={{ border: '1px solid var(--border)' }} />
+              ) : (
+                <div className="w-11 h-11 rounded-xl flex items-center justify-center text-xl flex-shrink-0"
+                  style={{ background: `linear-gradient(135deg, ${post.gradient[0]}, ${post.gradient[1]})` }}>
+                  {post.symbol}
+                </div>
+              )}
               <div className="flex-1 min-w-0">
                 <div className="flex items-center gap-2 mb-1">
                   <p className="font-semibold text-[14px] truncate" style={{ color: 'var(--fg)' }}>{post.title}</p>
@@ -611,10 +649,17 @@ export default function FeedPage() {
                           style={{ background: 'var(--bg-card)', borderColor: 'var(--border)' }}
                           onMouseEnter={e => (e.currentTarget.style.borderColor = 'var(--border-hover)')}
                           onMouseLeave={e => (e.currentTarget.style.borderColor = 'var(--border)')}>
-                          <div className="w-8 h-8 rounded-lg flex items-center justify-center text-base"
-                            style={{ background: `linear-gradient(135deg, ${p.gradient[0]}, ${p.gradient[1]})` }}>
-                            {p.symbol}
-                          </div>
+                          {p.cover ? (
+                            /* eslint-disable-next-line @next/next/no-img-element */
+                            <img src={p.cover} alt="" loading="lazy"
+                              className="w-8 h-8 rounded-lg object-cover"
+                              style={{ border: '1px solid var(--border)' }} />
+                          ) : (
+                            <div className="w-8 h-8 rounded-lg flex items-center justify-center text-base"
+                              style={{ background: `linear-gradient(135deg, ${p.gradient[0]}, ${p.gradient[1]})` }}>
+                              {p.symbol}
+                            </div>
+                          )}
                           <span className="body-sm font-medium line-clamp-2" style={{ color: 'var(--fg-2)' }}>{p.title}</span>
                           <span className="font-mono text-[10px]" style={{ color: 'var(--fg-3)' }}>{p.readTime} min</span>
                         </button>

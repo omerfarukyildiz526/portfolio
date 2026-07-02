@@ -11,7 +11,6 @@ const STATIC: [string, string, string][] = [
   ['/skills', 'monthly', '0.9'],
   ['/projects', 'weekly', '0.9'],
   ['/logs', 'daily', '0.8'],
-  ['/blog', 'daily', '0.8'],
   ['/contact', 'yearly', '0.6'],
 ];
 

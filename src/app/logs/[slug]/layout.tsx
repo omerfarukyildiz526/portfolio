@@ -36,10 +36,53 @@ export async function generateMetadata({
   };
 }
 
-export default function FeedPostLayout({
+const SITE_URL = "https://omerfarukyildiz.tech";
+
+export default async function FeedPostLayout({
   children,
+  params,
 }: {
   children: React.ReactNode;
+  params: Promise<{ slug: string }>;
 }) {
-  return children;
+  const { slug } = await params;
+  const post = await getPostBySlug(slug);
+
+  // Yazı için BlogPosting yapısal verisi — Google'ın zengin sonuçta yazar,
+  // tarih ve okuma süresini göstermesi için.
+  const jsonLd = post && {
+    "@context": "https://schema.org",
+    "@type": "BlogPosting",
+    "@id": `${SITE_URL}/logs/${slug}#article`,
+    headline: post.title,
+    description: post.excerpt,
+    datePublished: post.date,
+    dateModified: post.date,
+    keywords: post.tags.join(", "),
+    articleSection: post.tags[0],
+    timeRequired: `PT${post.readTime}M`,
+    inLanguage: "tr-TR",
+    url: `${SITE_URL}/logs/${slug}`,
+    mainEntityOfPage: `${SITE_URL}/logs/${slug}`,
+    ...(post.cover ? { image: `${SITE_URL}${post.cover}` } : {}),
+    author: {
+      "@type": "Person",
+      "@id": `${SITE_URL}/#person`,
+      name: "Ömer Faruk Yıldız",
+      url: SITE_URL,
+    },
+    publisher: { "@id": `${SITE_URL}/#person` },
+  };
+
+  return (
+    <>
+      {jsonLd && (
+        <script
+          type="application/ld+json"
+          dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
+        />
+      )}
+      {children}
+    </>
+  );
 }

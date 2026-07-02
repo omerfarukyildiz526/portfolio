@@ -64,7 +64,10 @@ export const metadata: Metadata = {
   publisher: "Ömer Faruk Yıldız",
   category: "technology",
   applicationName: "Ömer Faruk Yıldız — Backend Developer Portfolio",
-  alternates: { canonical: "/" },
+  alternates: {
+    canonical: "/",
+    types: { "application/rss+xml": "/rss.xml" },
+  },
   robots: {
     index: true,
     follow: true,
