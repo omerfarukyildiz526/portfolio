@@ -7,7 +7,7 @@ export const translations = {
       experience: '/experience',
       skills:     '/skills',
       projects:   '/projects',
-      feed:       '/feed',
+      feed:       '/logs',
       contact:    '/contact',
     },
 
@@ -272,7 +272,7 @@ export const translations = {
     },
 
     feed: {
-      pageTitle:    'FEED.',
+      pageTitle:    'LOGS.',
       pageDesc:     'Notlar, kod parçaları ve teknik yazılar.',
       gridView:     'Kart görünümü',
       listView:     'Liste görünümü',
@@ -293,7 +293,7 @@ export const translations = {
       experience: '/experience',
       skills:     '/skills',
       projects:   '/projects',
-      feed:       '/feed',
+      feed:       '/logs',
       contact:    '/contact',
     },
 
@@ -558,7 +558,7 @@ export const translations = {
     },
 
     feed: {
-      pageTitle:    'FEED.',
+      pageTitle:    'LOGS.',
       pageDesc:     'Notes, code snippets and technical writings.',
       gridView:     'Card view',
       listView:     'List view',

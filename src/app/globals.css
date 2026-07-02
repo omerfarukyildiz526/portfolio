@@ -339,6 +339,30 @@ textarea.input {
   color: var(--fg-2);
 }
 
+/* Sözdizimi vurgusu — token renkleri (GitHub paleti, temaya duyarlı) */
+[data-theme="dark"] {
+  --sx-kw:  #FF7B72;
+  --sx-fn:  #D2A8FF;
+  --sx-str: #A5D6FF;
+  --sx-num: #79C0FF;
+  --sx-com: #8B949E;
+  --sx-bi:  #FFA657;
+}
+[data-theme="light"] {
+  --sx-kw:  #CF222E;
+  --sx-fn:  #8250DF;
+  --sx-str: #0A3069;
+  --sx-num: #0550AE;
+  --sx-com: #6E7781;
+  --sx-bi:  #953800;
+}
+.sx-kw  { color: var(--sx-kw);  }
+.sx-fn  { color: var(--sx-fn);  }
+.sx-str { color: var(--sx-str); }
+.sx-num { color: var(--sx-num); }
+.sx-com { color: var(--sx-com); font-style: italic; }
+.sx-bi  { color: var(--sx-bi);  }
+
 
 /* ─────────────────────────────────────────────────────────────────────────────
    DIVIDER

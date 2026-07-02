@@ -236,7 +236,7 @@ export default function HomePage() {
             <EndpointCard method="GET"  path="/api/experience" desc={th.endpoints.experience}                             href="/experience" delay={0.30} />
             <EndpointCard method="GET"  path="/api/skills"     desc={th.endpoints.skills}                                 href="/skills"     delay={0.36} />
             <EndpointCard method="GET"  path="/api/projects"   desc={th.endpoints.projects}                               href="/projects"   delay={0.42} />
-            <EndpointCard method="GET"  path="/api/feed"       desc={th.endpoints.feed}                                                                                              href="/feed"      delay={0.48} />
+            <EndpointCard method="GET"  path="/api/logs"       desc={th.endpoints.feed}                                                                                              href="/logs"      delay={0.48} />
             <EndpointCard method="POST" path="/api/contact"    desc={th.endpoints.contact}                                href="/contact"    delay={0.54} />
           </div>
         </motion.div>

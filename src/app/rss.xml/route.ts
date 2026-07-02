@@ -14,8 +14,8 @@ export async function GET() {
 
   const items = posts.map(p => `    <item>
       <title>${esc(p.title)}</title>
-      <link>${BASE}/feed/${p.slug}</link>
-      <guid>${BASE}/feed/${p.slug}</guid>
+      <link>${BASE}/logs/${p.slug}</link>
+      <guid>${BASE}/logs/${p.slug}</guid>
       <pubDate>${new Date(p.date).toUTCString()}</pubDate>
       <description>${esc(p.excerpt)}</description>
     </item>`).join('\n');
@@ -24,7 +24,7 @@ export async function GET() {
 <rss version="2.0">
   <channel>
     <title>Ömer Faruk Yıldız — Yazılar</title>
-    <link>${BASE}/feed</link>
+    <link>${BASE}/logs</link>
     <description>Yazılar ve notlar</description>
     <language>tr</language>
 ${items}

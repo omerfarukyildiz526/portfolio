@@ -10,7 +10,7 @@ const STATIC: [string, string, string][] = [
   ['/experience', 'monthly', '0.9'],
   ['/skills', 'monthly', '0.9'],
   ['/projects', 'weekly', '0.9'],
-  ['/feed', 'daily', '0.8'],
+  ['/logs', 'daily', '0.8'],
   ['/blog', 'daily', '0.8'],
   ['/contact', 'yearly', '0.6'],
 ];
@@ -25,7 +25,7 @@ export async function GET() {
     ...STATIC.map(([p, freq, prio]) =>
       `  <url><loc>${BASE}${p}</loc><lastmod>${now}</lastmod><changefreq>${freq}</changefreq><priority>${prio}</priority></url>`),
     ...posts.map(p =>
-      `  <url><loc>${BASE}/feed/${p.slug}</loc><lastmod>${new Date(p.date).toISOString()}</lastmod><changefreq>monthly</changefreq><priority>0.7</priority></url>`),
+      `  <url><loc>${BASE}/logs/${p.slug}</loc><lastmod>${new Date(p.date).toISOString()}</lastmod><changefreq>monthly</changefreq><priority>0.7</priority></url>`),
   ].join('\n');
 
   const xml = `<?xml version="1.0" encoding="UTF-8"?>\n<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">\n${urls}\n</urlset>`;

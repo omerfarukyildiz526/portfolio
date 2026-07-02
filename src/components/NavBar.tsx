@@ -12,7 +12,7 @@ const ROUTES = [
   { path: '/experience', method: 'GET',  label: '/experience' },
   { path: '/skills',     method: 'GET',  label: '/skills'     },
   { path: '/projects',   method: 'GET',  label: '/projects'   },
-  { path: '/feed',       method: 'GET',  label: '/feed'       },
+  { path: '/logs',       method: 'GET',  label: '/logs'       },
   { path: '/contact',    method: 'POST', label: '/contact'    },
 ];
 

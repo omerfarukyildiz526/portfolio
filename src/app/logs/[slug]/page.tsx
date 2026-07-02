@@ -7,6 +7,7 @@ import { motion } from 'framer-motion';
 import { Post, ContentBlock } from '@/lib/posts';
 import { MD } from '@/components/Markdown';
 import Loader from '@/components/Loader';
+import Code from '@/components/Code';
 
 function Block({ block, index }: { block: ContentBlock; index: number }) {
   const delay = 0.3 + index * 0.04;
@@ -31,7 +32,7 @@ function Block({ block, index }: { block: ContentBlock; index: number }) {
           <span className="font-mono text-[11px]" style={{ color: 'var(--fg-3)' }}>{block.lang || 'code'}</span>
         </div>
         <pre className="overflow-x-auto p-5" style={{ fontFamily: 'var(--font-jetbrains, monospace)', fontSize: 13, lineHeight: 1.65, color: 'var(--fg-2)' }}>
-          <code>{block.text}</code>
+          <Code>{block.text ?? ''}</Code>
         </pre>
       </div>
     );
@@ -94,7 +95,7 @@ export default function FeedPostPage({ params }: { params: Promise<{ slug: strin
 
   if (post === undefined) {
     return <main className="min-h-screen flex items-center justify-center">
-      <Loader route={`/api/feed/${slug}`} />
+      <Loader route={`/api/logs/${slug}`} />
     </main>;
   }
   if (post === null) notFound();
@@ -106,14 +107,14 @@ export default function FeedPostPage({ params }: { params: Promise<{ slug: strin
         <motion.div initial={{ opacity: 0, x: -12 }} animate={{ opacity: 1, x: 0 }}
           transition={{ duration: 0.4 }} className="mb-12">
           <Link
-            href="/feed"
+            href="/logs"
             className="inline-flex items-center gap-2 font-mono text-[11px] transition-opacity hover:opacity-100"
             style={{ color: 'var(--fg-3)', opacity: 0.75 }}
           >
             <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
               <path d="M19 12H5M12 5l-7 7 7 7"/>
             </svg>
-            /feed
+            /logs
           </Link>
         </motion.div>
 
@@ -149,7 +150,7 @@ export default function FeedPostPage({ params }: { params: Promise<{ slug: strin
         <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.8, duration: 0.5 }}
           className="mt-20 pt-8 flex items-center justify-between"
           style={{ borderTop: '1px solid var(--border)' }}>
-          <Link href="/feed" className="inline-flex items-center gap-2 font-mono text-[11px] transition-opacity hover:opacity-100"
+          <Link href="/logs" className="inline-flex items-center gap-2 font-mono text-[11px] transition-opacity hover:opacity-100"
             style={{ color: 'var(--fg-3)', opacity: 0.75 }}>
             <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
               <path d="M19 12H5M12 5l-7 7 7 7"/>

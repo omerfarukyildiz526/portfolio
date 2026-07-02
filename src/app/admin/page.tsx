@@ -685,7 +685,7 @@ export default function AdminPage() {
             <code style={{ color: 'var(--fg-2)' }}>MONGODB_URI</code> tanımlı değil ya da yanlış. Atlas bağlantı adresini (gerçek şifreyle)
             ortam değişkenlerine ekleyip yeniden dene.
           </p>
-          <Link href="/feed" className="font-mono text-[12px]" style={{ color: 'var(--accent)' }}>← /feed</Link>
+          <Link href="/logs" className="font-mono text-[12px]" style={{ color: 'var(--accent)' }}>← /logs</Link>
         </div>
       </main>
     );
@@ -739,7 +739,7 @@ export default function AdminPage() {
             <motion.div initial={{ opacity: 0, rotateY: -90 }} animate={{ opacity: 1, rotateY: 0 }}
               transition={{ delay: 0.15, duration: 0.55, ease: [0.23, 1, 0.32, 1] }}
               className="absolute top-0 right-0 pointer-events-auto" style={{ transformPerspective: 700 }}>
-              <Link href="/feed"
+              <Link href="/logs"
                 className="group flex items-center gap-2 font-mono text-[11px] px-3.5 py-2 rounded-full border transition-all duration-200"
                 style={{ background: 'var(--bg-card)', borderColor: 'var(--border)', color: 'var(--fg-2)' }}
                 onMouseEnter={e => { e.currentTarget.style.borderColor = 'var(--accent)'; e.currentTarget.style.color = 'var(--accent)'; }}
@@ -1051,7 +1051,7 @@ export default function AdminPage() {
                   <Field label="Slug (URL) — boşsa başlıktan üretilir">
                     <input value={draft.slug} onChange={e => setField('slug', e.target.value)} placeholder="ornek-yazi" disabled={!!editingSlug} className="input" />
                     <span className="block font-mono text-[10px] mt-1.5 truncate" style={{ color: 'var(--fg-3)' }}>
-                      /feed/{editingSlug ?? (draft.slug.trim() || slugify(draft.title) || 'yazi')}
+                      /logs/{editingSlug ?? (draft.slug.trim() || slugify(draft.title) || 'yazi')}
                     </span>
                   </Field>
                   <Field label="Tarih">
