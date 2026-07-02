@@ -17,12 +17,21 @@ export async function generateMetadata({
     title: post.title,
     description: post.excerpt,
     keywords: post.tags,
+    authors: [{ name: "Ömer Faruk Yıldız", url: "https://omerfarukyildiz.tech" }],
+    alternates: { canonical: `/logs/${slug}` },
     openGraph: {
       title: `${post.title} | Ömer Faruk Yıldız`,
       description: post.excerpt,
+      url: `https://omerfarukyildiz.tech/logs/${slug}`,
       type: "article",
       publishedTime: post.date,
+      authors: ["Ömer Faruk Yıldız"],
       tags: post.tags,
+    },
+    twitter: {
+      card: "summary_large_image",
+      title: post.title,
+      description: post.excerpt,
     },
   };
 }
