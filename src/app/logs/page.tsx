@@ -5,7 +5,7 @@ import Link from 'next/link';
 import { motion } from 'framer-motion';
 import { Post } from '@/lib/posts';
 import { useLang } from '@/lib/i18n';
-import JsonSkeleton from '@/components/JsonSkeleton';
+import LogsGridSkeleton from '@/components/logs/LogsGridSkeleton';
 import StoryViewer, { type ViewerStory } from '@/components/StoryViewer';
 import { SEED_LOGS_PROFILE, type LogsProfileContent } from '@/lib/logs-profile';
 import type { LogStoryDTO } from '@/lib/log-stories';
@@ -34,13 +34,13 @@ function GridCard({ post, index }: { post: Post; index: number }) {
     >
       <Link
         href={`/logs/${post.slug}`}
-        className="group relative block w-full aspect-square overflow-hidden rounded-[2px]"
+        className="logs-card group relative block w-full aspect-square overflow-hidden rounded-[2px]"
         style={{ border: '1px solid var(--border)', background: 'var(--bg-card)' }}
       >
         {post.cover ? (
           /* eslint-disable-next-line @next/next/no-img-element */
           <img src={post.cover} alt="" loading="lazy"
-            className="absolute inset-0 w-full h-full object-cover transition-transform duration-500 group-hover:scale-105" />
+            className="logs-card-cover absolute inset-0 w-full h-full object-cover transition-transform duration-300 ease-out" />
         ) : (
           <div className="absolute inset-0 flex items-center justify-center text-4xl"
             style={{ background: `linear-gradient(135deg, ${post.gradient[0]}, ${post.gradient[1]})` }}>
@@ -61,7 +61,7 @@ function GridCard({ post, index }: { post: Post; index: number }) {
           style={{ background: 'rgba(10,9,8,0.82)' }}>
           <p className="logs-display text-[15px] font-semibold leading-snug mb-1.5" style={{ color: '#F3EEE4' }}>{post.title}</p>
           <p className="text-[12px] leading-snug line-clamp-3 mb-2" style={{ color: '#B6AD9C', fontFamily: 'var(--font-logs-body)' }}>{post.excerpt}</p>
-          <div className="flex items-center gap-2 logs-mono text-[10px]" style={{ color: '#E8703B' }}>
+          <div className="flex items-center gap-2 logs-mono text-[10px]" style={{ color: 'var(--accent)' }}>
             {isNew(post.date) && <span className="font-bold uppercase tracking-wider">NEW ·</span>}
             <span>{post.readTime} dk</span>
           </div>
@@ -69,7 +69,7 @@ function GridCard({ post, index }: { post: Post; index: number }) {
 
         {isNew(post.date) && (
           <span className="absolute top-2 right-2 logs-mono text-[9px] font-bold uppercase tracking-wider px-1.5 py-0.5 rounded"
-            style={{ color: '#fff', background: '#E8703B' }}>
+            style={{ color: '#fff', background: 'var(--accent)' }}>
             NEW
           </span>
         )}
@@ -177,19 +177,17 @@ export default function LogsGridPage() {
                 if (hasStories) setViewerOpen(true);
                 else window.open(IG_URL, '_blank', 'noopener,noreferrer');
               }}
-              className="relative flex-shrink-0 rounded-full"
+              className="relative flex-shrink-0 w-[76px] h-[76px] sm:w-[100px] sm:h-[100px] rounded-full transition-transform active:scale-95"
               aria-label={hasStories ? (lang === 'tr' ? 'hikayeleri gör' : 'view stories') : (lang === 'tr' ? 'profili gör' : 'view profile')}>
-              <div className="w-[76px] h-[76px] sm:w-[100px] sm:h-[100px] rounded-full p-[3px] transition-transform active:scale-95"
-                style={{ background: hasStories
-                  ? 'conic-gradient(from 45deg, #E8703B, #C24B8C, #7A3B1F, #E8703B)'
-                  : 'var(--border)' }}>
-                <div className="w-full h-full rounded-full flex items-center justify-center text-3xl sm:text-4xl overflow-hidden"
-                  style={{ background: 'var(--bg)', border: '2px solid var(--bg)' }}>
-                  {profile.avatarUrl ? (
-                    /* eslint-disable-next-line @next/next/no-img-element */
-                    <img src={profile.avatarUrl} alt="" className="w-full h-full object-cover" />
-                  ) : '📓'}
-                </div>
+              {/* Ring katmanı — aktif story varken döner, avatar içeriği bundan etkilenmez */}
+              <div className={`absolute inset-0 rounded-full ${hasStories ? 'logs-gradient-ring' : ''}`}
+                style={hasStories ? undefined : { background: 'var(--border)' }} />
+              <div className="absolute inset-[3px] rounded-full flex items-center justify-center text-3xl sm:text-4xl overflow-hidden"
+                style={{ background: 'var(--bg)', border: '2px solid var(--bg)' }}>
+                {profile.avatarUrl ? (
+                  /* eslint-disable-next-line @next/next/no-img-element */
+                  <img src={profile.avatarUrl} alt="" className="w-full h-full object-cover" />
+                ) : '📓'}
               </div>
             </button>
 
@@ -218,8 +216,8 @@ export default function LogsGridPage() {
                 <div className="flex items-center gap-2">
                   <a href={IG_URL} target="_blank" rel="noopener noreferrer"
                     title={lang === 'tr' ? "Instagram'da takip et" : 'Follow on Instagram'}
-                    className="flex-1 sm:flex-none text-center logs-mono text-[12px] font-semibold px-4 py-1.5 rounded-lg transition-colors"
-                    style={{ background: '#E8703B', color: '#fff' }}>
+                    className="logs-follow-btn flex-1 sm:flex-none text-center logs-mono text-[12px] font-semibold px-4 py-1.5 rounded-lg"
+                    style={{ color: '#fff' }}>
                     {lang === 'tr' ? 'Takip Et' : 'Follow'}
                   </a>
                   <Link href="/contact"
@@ -240,7 +238,7 @@ export default function LogsGridPage() {
 
               {/* Sağ: bio — kullanıcı adıyla aynı hizada başlar, ayrı bir kolon */}
               <p className="hidden sm:block flex-shrink-0 max-w-sm text-[14px] font-medium text-right leading-relaxed pr-3"
-                style={{ color: 'var(--fg)', borderRight: '2px solid #E8703B' }}>
+                style={{ color: 'var(--fg)', borderRight: '2px solid var(--accent)' }}>
                 {lang === 'tr' ? profile.bio.tr : profile.bio.en}
               </p>
             </div>
@@ -261,7 +259,7 @@ export default function LogsGridPage() {
               </svg>
               {lang === 'tr' ? 'gönderiler' : 'posts'}
             </div>
-            <div style={{ borderTop: '1.5px solid #E8703B' }} />
+            <div className="logs-tab-underline" style={{ height: 1.5 }} />
           </div>
         </motion.div>
 
@@ -272,7 +270,7 @@ export default function LogsGridPage() {
             <button onClick={() => setActiveTag(null)}
               className="logs-mono text-[9px] px-2 py-[3px] rounded-full border transition-colors"
               style={activeTag === null
-                ? { color: '#fff', background: '#E8703B', borderColor: '#E8703B' }
+                ? { color: '#fff', background: 'var(--accent)', borderColor: 'var(--accent)' }
                 : { color: 'var(--fg-3)', borderColor: 'var(--border)' }}>
               all
             </button>
@@ -280,7 +278,7 @@ export default function LogsGridPage() {
               <button key={tag} onClick={() => setActiveTag(t => (t === tag ? null : tag))}
                 className="logs-mono text-[9px] px-2 py-[3px] rounded-full border transition-colors"
                 style={activeTag === tag
-                  ? { color: '#fff', background: '#E8703B', borderColor: '#E8703B' }
+                  ? { color: '#fff', background: 'var(--accent)', borderColor: 'var(--accent)' }
                   : { color: 'var(--fg-3)', borderColor: 'var(--border)' }}>
                 {tag}
               </button>
@@ -290,7 +288,7 @@ export default function LogsGridPage() {
 
         {/* ── Grid ── */}
         {loading ? (
-          <JsonSkeleton rows={5} />
+          <LogsGridSkeleton />
         ) : posts.length === 0 ? (
           <div className="flex flex-col items-center justify-center gap-3 py-20">
             <div className="w-14 h-14 rounded-full flex items-center justify-center border-2" style={{ borderColor: 'var(--fg-3)' }}>

@@ -1,6 +1,7 @@
 'use client';
 
 import { motion } from 'framer-motion';
+import LogsAmbientIcons from '@/components/logs/LogsAmbientIcons';
 
 // /logs alt ağacının tamamını sarar. Tema izolasyonu (.logs-theme, globals.css)
 // yalnızca bu wrapper'ın içinde geçerli — NavBar dışarıda kaldığı için
@@ -15,6 +16,7 @@ export default function LogsThemeShell({ children, fontVars }: { children: React
       animate={{ opacity: 1 }}
       transition={{ duration: 0.5, ease: [0.23, 1, 0.32, 1] }}
     >
+      <LogsAmbientIcons />
       {children}
     </motion.div>
   );
