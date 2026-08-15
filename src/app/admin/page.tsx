@@ -9,24 +9,27 @@ import type { SiteContent, PageKey, HomeLang, ExperienceLang, ContactLang, Proje
 import type { LibraryItemDTO } from '@/lib/library-db';
 import { MD } from '@/components/Markdown';
 import Loader from '@/components/Loader';
+import LogsProfilePanel from './LogsProfilePanel';
+import PostWizardModal from './PostWizardModal';
 
 type Status = 'loading' | 'setup' | 'login' | 'ready' | 'dberror';
 type View = 'list' | 'editor';
 type Tab = 'edit' | 'preview';
-type Section = 'overview' | 'home' | 'experience' | 'skills' | 'projects' | 'posts' | 'contact' | 'messages' | 'library' | 'security';
+type Section = 'overview' | 'home' | 'experience' | 'skills' | 'projects' | 'posts' | 'logsProfile' | 'contact' | 'messages' | 'library' | 'security';
 
 // Tek satırda birleşik sekmeler — istenen sıra.
 const SECTIONS: [Section, string][] = [
-  ['overview',   'Özet'],
-  ['home',       'Ana Sayfa'],
-  ['experience', 'Deneyim'],
-  ['skills',     'Donanım'],
-  ['projects',   'Projeler'],
-  ['posts',      'Yazılar'],
-  ['contact',    'İletişim'],
-  ['messages',   'Mesajlar'],
-  ['library',    'Kütüphane'],
-  ['security',   'Güvenlik'],
+  ['overview',    'Özet'],
+  ['home',        'Ana Sayfa'],
+  ['experience',  'Deneyim'],
+  ['skills',      'Donanım'],
+  ['projects',    'Projeler'],
+  ['posts',       'Yazılar'],
+  ['logsProfile', 'Logs Profili'],
+  ['contact',     'İletişim'],
+  ['messages',    'Mesajlar'],
+  ['library',     'Kütüphane'],
+  ['security',    'Güvenlik'],
 ];
 // Sayfa editörü kullanan bölümler.
 const PAGE_SECTIONS: Section[] = ['home', 'experience', 'contact', 'projects'];
@@ -239,6 +242,7 @@ export default function AdminPage() {
   const [openMsg, setOpenMsg] = useState<string | null>(null);
   const [search, setSearch] = useState('');
   const [view, setView] = useState<View>('list');
+  const [wizardOpen, setWizardOpen] = useState(false);
   const [tab, setTab] = useState<Tab>('edit');
   const [draft, setDraft] = useState<Post>(EMPTY_DRAFT);
   const [tagsInput, setTagsInput] = useState('');
@@ -928,6 +932,8 @@ export default function AdminPage() {
               <MessagesPanel messages={messages} openMsg={openMsg} onOpen={openMessage} onToggleRead={markRead} onDelete={confirmDeleteMessage} />
             ) : section === 'library' ? (
               <LibraryPanel notify={notify} onAuthError={goLogin} />
+            ) : section === 'logsProfile' ? (
+              <LogsProfilePanel notify={notify} onAuthError={goLogin} />
             ) : section === 'security' ? (
               <SecurityPanel notify={notify} onAuthError={goLogin} />
             ) : section === 'skills' ? (
@@ -972,9 +978,12 @@ export default function AdminPage() {
                 <input value={search} onChange={e => setSearch(e.target.value)} placeholder="Yazılarda ara…"
                   className="input" style={{ paddingLeft: 38 }} />
               </div>
-              <button onClick={newPost}
+              <button onClick={() => setWizardOpen(true)}
                 className="flex-shrink-0 px-4 py-3 rounded-xl font-semibold text-sm transition-opacity hover:opacity-90"
-                style={{ background: 'var(--accent)', color: '#fff' }}>+ Yeni</button>
+                style={{ background: 'var(--accent)', color: '#fff' }}>+ Paylaş</button>
+              <button onClick={newPost}
+                className="flex-shrink-0 px-4 py-3 rounded-xl font-mono text-[11px] border"
+                style={{ color: 'var(--fg-2)', borderColor: 'var(--border)' }} title="Hızlı düzenle — tüm alanlar ve içerik blokları">Hızlı düzenle</button>
             </div>
 
             <div className="space-y-3">
@@ -1077,6 +1086,14 @@ export default function AdminPage() {
                     /* eslint-disable-next-line @next/next/no-img-element */
                     <img src={draft.cover} alt="" className="mt-2 w-full rounded-lg" style={{ maxHeight: 160, objectFit: 'cover', border: '1px solid var(--border)' }} />
                   )}
+                  <span className="block font-mono text-[10px] mt-1.5" style={{ color: 'var(--fg-3)' }}>
+                    /logs grid&apos;inde kare kapak olarak kullanılır — kare (1:1) görsel öner.
+                  </span>
+                </Field>
+
+                <Field label="Instagram linki (opsiyonel) — @dev.omer.logs&apos;ta paylaştığın gönderi">
+                  <input value={draft.instagramUrl ?? ''} onChange={e => setField('instagramUrl', e.target.value || undefined)}
+                    placeholder="https://instagram.com/p/…" className="input" />
                 </Field>
 
                 <div className="grid grid-cols-3 gap-4">
@@ -1249,6 +1266,14 @@ export default function AdminPage() {
           </motion.div>
         )}
       </AnimatePresence>
+
+      {wizardOpen && (
+        <PostWizardModal
+          onClose={() => setWizardOpen(false)}
+          onAuthError={goLogin}
+          onPublished={() => { loadPosts(); notify('Yayınlandı.'); }}
+        />
+      )}
     </main>
   );
 }

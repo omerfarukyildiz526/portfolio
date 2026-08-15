@@ -6,6 +6,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { useTheme } from 'next-themes';
 import { useEffect, useRef, useState } from 'react';
 import { useLang } from '@/lib/i18n';
+import { setLogsSearchQuery, setLogsSearchOpen, useLogsSearchOpen, resetLogsSearch } from '@/lib/logs-search-store';
 
 const ROUTES = [
   { path: '/',           method: 'GET',  label: '/home'       },
@@ -24,6 +25,23 @@ export default function NavBar() {
   const [mounted, setMounted] = useState(false);
   const [now, setNow] = useState<Date | null>(null);
   const [menuOpen, setMenuOpen] = useState(false);
+  const logsSearchOpen = useLogsSearchOpen();
+  const [logsSearchInput, setLogsSearchInput] = useState('');
+  const logsSearchRef = useRef<HTMLInputElement>(null);
+  const onLogs = pathname === '/logs';
+
+  // /logs'tan ayrılınca arama kutusunu ve paylaşılan sorguyu temizle.
+  useEffect(() => {
+    if (!onLogs) {
+      setLogsSearchInput('');
+      resetLogsSearch();
+    }
+  }, [onLogs]);
+
+  // Arama başka bir tetikleyiciden (header'daki ikon gibi) açıldığında input'a odaklan.
+  useEffect(() => {
+    if (logsSearchOpen) setTimeout(() => logsSearchRef.current?.focus(), 0);
+  }, [logsSearchOpen]);
 
   // Logo: tek tık → ana sayfa, çift tık → gizli panel girişi.
   const logoTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -172,6 +190,42 @@ export default function NavBar() {
 
         {/* Utilities */}
         <div className="flex items-center gap-2 flex-shrink-0">
+
+          {/* Logs arama — yalnızca /logs'ta, büyüteç ikonu tıklayınca genişler */}
+          {onLogs && (
+            <div className="relative flex items-center">
+              <AnimatePresence>
+                {logsSearchOpen && (
+                  <motion.input
+                    ref={logsSearchRef}
+                    initial={{ width: 0, opacity: 0 }}
+                    animate={{ width: 140, opacity: 1 }}
+                    exit={{ width: 0, opacity: 0 }}
+                    transition={{ duration: 0.25, ease: [0.23, 1, 0.32, 1] }}
+                    value={logsSearchInput}
+                    onChange={e => { setLogsSearchInput(e.target.value); setLogsSearchQuery(e.target.value); }}
+                    onBlur={() => { if (!logsSearchInput.trim()) setLogsSearchOpen(false); }}
+                    placeholder={lang === 'tr' ? 'ara…' : 'search…'}
+                    className="font-mono text-[11px] rounded-md py-1 px-2 mr-1.5 outline-none"
+                    style={{ background: 'var(--surface)', border: '1px solid var(--border)', color: 'var(--fg)' }}
+                  />
+                )}
+              </AnimatePresence>
+              <button
+                onClick={() => {
+                  const next = !logsSearchOpen;
+                  setLogsSearchOpen(next);
+                  if (!next) { setLogsSearchInput(''); setLogsSearchQuery(''); }
+                }}
+                aria-label={lang === 'tr' ? 'ara' : 'search'}
+                className="w-6 h-6 rounded-md flex items-center justify-center transition-colors"
+                style={{ background: logsSearchOpen ? 'var(--surface)' : 'transparent', border: '1px solid var(--border)', color: 'var(--fg-3)' }}>
+                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                  <circle cx="11" cy="11" r="8" /><path d="m21 21-4.3-4.3" />
+                </svg>
+              </button>
+            </div>
+          )}
 
           {/* Language toggle */}
           <div

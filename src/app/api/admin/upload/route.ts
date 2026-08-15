@@ -4,8 +4,10 @@ import { isAuthed } from '@/lib/auth';
 
 export const dynamic = 'force-dynamic';
 
-const MAX_BYTES = 8 * 1024 * 1024; // 8 MB
-const ALLOWED = ['image/png', 'image/jpeg', 'image/webp', 'image/gif', 'image/avif', 'image/svg+xml'];
+const MAX_IMAGE_BYTES = 8 * 1024 * 1024; // 8 MB
+const MAX_VIDEO_BYTES = 50 * 1024 * 1024; // 50 MB
+const ALLOWED_IMAGE = ['image/png', 'image/jpeg', 'image/webp', 'image/gif', 'image/avif', 'image/svg+xml'];
+const ALLOWED_VIDEO = ['video/mp4', 'video/webm', 'video/quicktime'];
 
 export async function POST(req: NextRequest) {
   if (!(await isAuthed())) {
@@ -25,8 +27,15 @@ export async function POST(req: NextRequest) {
   }
 
   if (!file) return NextResponse.json({ error: 'Dosya bulunamadı.' }, { status: 400 });
-  if (!ALLOWED.includes(file.type)) return NextResponse.json({ error: 'Yalnızca görsel dosyaları yüklenebilir.' }, { status: 400 });
-  if (file.size > MAX_BYTES) return NextResponse.json({ error: 'Dosya 8 MB sınırını aşıyor.' }, { status: 400 });
+
+  const isImage = ALLOWED_IMAGE.includes(file.type);
+  const isVideo = ALLOWED_VIDEO.includes(file.type);
+  if (!isImage && !isVideo) return NextResponse.json({ error: 'Yalnızca görsel veya video dosyaları yüklenebilir.' }, { status: 400 });
+
+  const maxBytes = isVideo ? MAX_VIDEO_BYTES : MAX_IMAGE_BYTES;
+  if (file.size > maxBytes) {
+    return NextResponse.json({ error: `Dosya ${maxBytes / (1024 * 1024)} MB sınırını aşıyor.` }, { status: 400 });
+  }
 
   try {
     const safeName = file.name.replace(/[^a-zA-Z0-9._-]/g, '-');
