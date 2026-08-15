@@ -29,18 +29,25 @@ export default async function Image({ params }: { params: Promise<{ slug: string
         style={{
           width: '100%', height: '100%', display: 'flex', flexDirection: 'column',
           justifyContent: 'space-between', padding: 72,
-          background: 'radial-gradient(circle at 20% 10%, #15151c, #0b0b0f)',
-          color: '#ffffff', fontFamily: 'sans-serif',
+          background: 'radial-gradient(circle at 20% 10%, #201d17, #0a0908)',
+          color: '#F3EEE4', fontFamily: 'sans-serif',
         }}
       >
-        {/* Üst satır: GET /api/logs → 200 OK */}
+        {/* Üst satır: GET /api/logs → 200 OK (+ IG rozeti varsa) */}
         <div style={{ display: 'flex', alignItems: 'center', gap: 16, fontSize: 26 }}>
           <span style={{
-            color: '#0A84FF', background: 'rgba(10,132,255,0.14)',
+            color: '#E8703B', background: 'rgba(232,112,59,0.14)',
             padding: '6px 16px', borderRadius: 8, fontWeight: 700, letterSpacing: 1,
           }}>GET</span>
-          <span style={{ color: '#8a8a99' }}>/api/logs/{slug}</span>
+          <span style={{ color: '#726A5B' }}>/api/logs/{slug}</span>
           <span style={{ color: '#30D158' }}>→ 200 OK</span>
+          {post?.instagramUrl && (
+            <span style={{
+              color: '#E8703B', background: 'rgba(232,112,59,0.10)',
+              border: '1px solid rgba(232,112,59,0.3)',
+              padding: '6px 16px', borderRadius: 999, fontSize: 22,
+            }}>@dev.omer.logs</span>
+          )}
         </div>
 
         {/* Orta: sembol kutusu + başlık */}
@@ -56,8 +63,8 @@ export default async function Image({ params }: { params: Promise<{ slug: string
           <div style={{ display: 'flex', gap: 12 }}>
             {tags.map(t => (
               <span key={t} style={{
-                fontSize: 24, color: '#0A84FF', background: 'rgba(10,132,255,0.12)',
-                border: '1px solid rgba(10,132,255,0.28)', padding: '4px 16px', borderRadius: 999,
+                fontSize: 24, color: '#E8703B', background: 'rgba(232,112,59,0.12)',
+                border: '1px solid rgba(232,112,59,0.28)', padding: '4px 16px', borderRadius: 999,
               }}>{t}</span>
             ))}
           </div>
@@ -67,10 +74,10 @@ export default async function Image({ params }: { params: Promise<{ slug: string
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: 18 }}>
             {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img src={logoSrc} width={56} height={56} alt="" style={{ borderRadius: 28, border: '2px solid #2a2a35' }} />
+            <img src={logoSrc} width={56} height={56} alt="" style={{ borderRadius: 28, border: '2px solid #302c24' }} />
             <span style={{ fontSize: 28, fontWeight: 600 }}>Ömer Faruk Yıldız</span>
           </div>
-          <span style={{ fontSize: 24, color: '#8a8a99' }}>{dateStr}</span>
+          <span style={{ fontSize: 24, color: '#726A5B' }}>{dateStr}</span>
         </div>
       </div>
     ),

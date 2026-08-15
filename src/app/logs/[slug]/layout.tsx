@@ -64,7 +64,8 @@ export default async function FeedPostLayout({
     inLanguage: "tr-TR",
     url: `${SITE_URL}/logs/${slug}`,
     mainEntityOfPage: `${SITE_URL}/logs/${slug}`,
-    ...(post.cover ? { image: `${SITE_URL}${post.cover}` } : {}),
+    ...(post.cover ? { image: post.cover.startsWith('http') ? post.cover : `${SITE_URL}${post.cover}` } : {}),
+    ...(post.instagramUrl ? { sameAs: [post.instagramUrl] } : {}),
     author: {
       "@type": "Person",
       "@id": `${SITE_URL}/#person`,

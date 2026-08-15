@@ -4,6 +4,8 @@ import type { Post } from './posts';
 import type { SkillsContent } from './skills-content';
 import type { PageKey } from './site-content';
 import type { LibraryItem } from './library-db';
+import type { LogsProfileContent } from './logs-profile';
+import type { LogStory } from './log-stories';
 
 // Donanım içeriği tek bir dokümanda tutulur: { _id: 'singleton', tr, en }
 export type SkillsDoc = { _id: string } & SkillsContent;
@@ -56,4 +58,17 @@ export async function getContentCollection(): Promise<Collection<ContentDoc>> {
 export async function getLibraryCollection(): Promise<Collection<LibraryItem>> {
   const db = await getDb();
   return db.collection<LibraryItem>('library');
+}
+
+// Logs profil header'ı: tek doküman { _id: 'singleton', avatarUrl, username, instagramUrl, bio }
+export type LogsProfileDoc = { _id: string } & LogsProfileContent;
+
+export async function getLogsProfileCollection(): Promise<Collection<LogsProfileDoc>> {
+  const db = await getDb();
+  return db.collection<LogsProfileDoc>('logsProfile');
+}
+
+export async function getLogStoriesCollection(): Promise<Collection<LogStory>> {
+  const db = await getDb();
+  return db.collection<LogStory>('logStories');
 }

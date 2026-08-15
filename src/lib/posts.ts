@@ -17,7 +17,8 @@ export interface Post {
   readTime: number;
   content: ContentBlock[];
   published?: boolean; // tanımsız = yayında (eski yazılarla uyum için)
-  cover?: string;      // kapak görseli URL'si (opsiyonel)
+  cover?: string;      // kapak görseli URL'si — /logs grid'inde kare kapak olarak da kullanılır
+  instagramUrl?: string; // referans verilen Instagram gönderisi (opsiyonel)
 }
 
 // Başlangıç içeriği. Veritabanı boşsa bu yazılar otomatik olarak MongoDB'ye

@@ -483,6 +483,60 @@ textarea.input {
 
 
 /* ─────────────────────────────────────────────────────────────────────────────
+   LOGS THEME — /logs alt ağacına özel, izole tema
+   Ana sitenin CSS değişkenlerini (--bg, --fg, --accent…) yalnızca bu class'ın
+   içinde geçersiz kılar; kapsam dışına (NavBar, diğer sayfalar) sızmaz çünkü
+   NavBar bu wrapper'ın dışında, ClientShell'de render edilir.
+   Sıcak, moody, "dijital karanlık oda" hissi — Instagram'a gönderme yapar ama
+   kopyalamaz: kare kartlar, ince çerçeveler, hafif grain, amber vurgu.
+───────────────────────────────────────────────────────────────────────────── */
+.logs-theme {
+  --bg:           #0A0908;
+  --bg-card:      #15130F;
+  --bg-raised:    #201D17;
+  --fg:           #F3EEE4;
+  --fg-2:         #B6AD9C;
+  --fg-3:         #726A5B;
+  --border:       rgba(243,238,228,0.09);
+  --border-hover: rgba(243,238,228,0.20);
+  --surface:      rgba(243,238,228,0.045);
+  --accent:       #E8703B;
+  --accent-post:  #E8703B;
+  color-scheme: dark;
+
+  background: var(--bg);
+  color: var(--fg);
+  font-family: var(--font-logs-body, serif);
+  min-height: 100dvh;
+  position: relative;
+  isolation: isolate;
+}
+
+/* Grain doku — sabit, hafif, blend ile üstte */
+.logs-theme::before {
+  content: '';
+  position: fixed;
+  inset: 0;
+  z-index: 0;
+  pointer-events: none;
+  opacity: 0.05;
+  mix-blend-mode: overlay;
+}
+.logs-theme::before { background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 240 240' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E"); }
+
+.logs-theme > * { position: relative; z-index: 1; }
+
+.logs-theme .logs-display {
+  font-family: var(--font-logs-display, sans-serif);
+  letter-spacing: -0.02em;
+}
+
+.logs-theme .logs-mono {
+  font-family: var(--font-jetbrains, monospace);
+}
+
+
+/* ─────────────────────────────────────────────────────────────────────────────
    LIGHTBOX
 ───────────────────────────────────────────────────────────────────────────── */
 .lightbox-overlay {

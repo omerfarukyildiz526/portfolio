@@ -4,6 +4,7 @@ import type {
   PageKey, HomeLang, ExperienceLang, ContactLang, ProjectsLang,
 } from './site-content';
 import type { LibraryItemInput } from './library-db';
+import type { LogsProfileContent } from './logs-profile';
 
 const BLOCK_TYPES = ['p', 'h2', 'h3', 'code', 'list', 'note', 'quote', 'image', 'divider'] as const;
 
@@ -238,8 +239,37 @@ export function parsePost(input: unknown): { ok: true; post: Post } | { ok: fals
     content,
     published: typeof o.published === 'boolean' ? o.published : true,
     cover: str(o.cover) || undefined,
+    instagramUrl: str(o.instagramUrl) || undefined,
   };
   return { ok: true, post };
+}
+
+/** Gelen JSON'ı temiz bir LogsProfileContent objesine dönüştürür; geçersizse hata mesajı verir. */
+export function parseLogsProfile(input: unknown): { ok: true; profile: LogsProfileContent } | { ok: false; error: string } {
+  if (typeof input !== 'object' || input === null) return { ok: false, error: 'Geçersiz veri.' };
+  const o = input as Record<string, unknown>;
+
+  const username = str(o.username).replace(/^@+/, '');
+  if (!username) return { ok: false, error: 'Kullanıcı adı zorunlu.' };
+
+  const instagramUrl = str(o.instagramUrl);
+  if (instagramUrl && !isValidUrl(instagramUrl)) return { ok: false, error: 'Instagram linki geçerli bir URL olmalı.' };
+
+  const b = obj(o.bio);
+  const followerCount = Number(o.followerCount);
+  const followingCount = Number(o.followingCount);
+  return {
+    ok: true,
+    profile: {
+      avatarUrl: str(o.avatarUrl),
+      username,
+      displayName: str(o.displayName),
+      instagramUrl,
+      followerCount: Number.isFinite(followerCount) && followerCount >= 0 ? Math.round(followerCount) : 0,
+      followingCount: Number.isFinite(followingCount) && followingCount >= 0 ? Math.round(followingCount) : 0,
+      bio: { tr: str(b.tr), en: str(b.en) },
+    },
+  };
 }
 
 function isValidUrl(v: string): boolean {
