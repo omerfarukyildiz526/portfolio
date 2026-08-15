@@ -6,13 +6,14 @@ import { motion, AnimatePresence, useMotionValue, useSpring, useTransform } from
 import type { Post, ContentBlock } from '@/lib/posts';
 import type { SkillsContent, SkillsLang } from '@/lib/skills-content';
 import type { SiteContent, PageKey, HomeLang, ExperienceLang, ContactLang, ProjectsLang } from '@/lib/site-content';
+import type { LibraryItemDTO } from '@/lib/library-db';
 import { MD } from '@/components/Markdown';
 import Loader from '@/components/Loader';
 
 type Status = 'loading' | 'setup' | 'login' | 'ready' | 'dberror';
 type View = 'list' | 'editor';
 type Tab = 'edit' | 'preview';
-type Section = 'overview' | 'home' | 'experience' | 'skills' | 'projects' | 'posts' | 'contact' | 'messages' | 'security';
+type Section = 'overview' | 'home' | 'experience' | 'skills' | 'projects' | 'posts' | 'contact' | 'messages' | 'library' | 'security';
 
 // Tek satırda birleşik sekmeler — istenen sıra.
 const SECTIONS: [Section, string][] = [
@@ -24,6 +25,7 @@ const SECTIONS: [Section, string][] = [
   ['posts',      'Yazılar'],
   ['contact',    'İletişim'],
   ['messages',   'Mesajlar'],
+  ['library',    'Kütüphane'],
   ['security',   'Güvenlik'],
 ];
 // Sayfa editörü kullanan bölümler.
@@ -924,6 +926,8 @@ export default function AdminPage() {
                 onAuthError={goLogin} onGo={setSection} />
             ) : section === 'messages' ? (
               <MessagesPanel messages={messages} openMsg={openMsg} onOpen={openMessage} onToggleRead={markRead} onDelete={confirmDeleteMessage} />
+            ) : section === 'library' ? (
+              <LibraryPanel notify={notify} onAuthError={goLogin} />
             ) : section === 'security' ? (
               <SecurityPanel notify={notify} onAuthError={goLogin} />
             ) : section === 'skills' ? (
@@ -1295,6 +1299,189 @@ function MessagesPanel({ messages, openMsg, onOpen, onToggleRead, onDelete }: {
           </div>
         );
       })}
+    </div>
+  );
+}
+
+// ── Kütüphane (/library) — private link koleksiyonu ──
+const EMPTY_LIB_DRAFT: LibraryDraft = { url: '', title: '', note: '', tags: '', source: '' };
+
+interface LibraryDraft { url: string; title: string; note: string; tags: string; source: string; }
+
+function LibraryPanel({ notify, onAuthError }: { notify: (m: string, t?: 'ok' | 'err') => void; onAuthError: () => void }) {
+  const [items, setItems] = useState<LibraryItemDTO[] | null>(null);
+  const [search, setSearch] = useState('');
+  const [activeTag, setActiveTag] = useState<string | null>(null);
+  const [view, setView] = useState<View>('list');
+  const [draft, setDraft] = useState<LibraryDraft>(EMPTY_LIB_DRAFT);
+  const [editingId, setEditingId] = useState<string | null>(null);
+  const [saving, setSaving] = useState(false);
+  const [formError, setFormError] = useState('');
+  const [confirmState, setConfirmState] = useState<{ msg: string; action: () => void } | null>(null);
+
+  const load = useCallback(async () => {
+    const res = await fetch('/api/admin/library', { cache: 'no-store' });
+    if (res.status === 401) return onAuthError();
+    const d = await res.json().catch(() => ({}));
+    setItems(d.items ?? []);
+  }, [onAuthError]);
+
+  useEffect(() => {
+    (async () => { await load(); })();
+  }, [load]);
+
+  const allTags = useMemo(() => Array.from(new Set((items ?? []).flatMap(i => i.tags))).sort(), [items]);
+  const filtered = useMemo(() => {
+    let list = items ?? [];
+    if (activeTag) list = list.filter(i => i.tags.includes(activeTag));
+    const q = search.trim().toLowerCase();
+    if (q) list = list.filter(i => i.title.toLowerCase().includes(q) || i.url.toLowerCase().includes(q));
+    return list;
+  }, [items, search, activeTag]);
+
+  function openNew() {
+    setDraft(EMPTY_LIB_DRAFT); setEditingId(null); setFormError(''); setView('editor');
+  }
+  function openEdit(i: LibraryItemDTO) {
+    setDraft({ url: i.url, title: i.title, note: i.note ?? '', tags: i.tags.join(', '), source: i.source ?? '' });
+    setEditingId(i.id); setFormError(''); setView('editor');
+  }
+  function confirmDelete(id: string, title: string) {
+    setConfirmState({
+      msg: `"${title}" kalıcı olarak silinecek. Emin misin?`,
+      action: async () => {
+        const res = await fetch(`/api/admin/library/${id}`, { method: 'DELETE' });
+        if (res.status === 401) return onAuthError();
+        if (res.ok) { await load(); notify('Kayıt silindi.'); }
+        else notify('Silinemedi.', 'err');
+      },
+    });
+  }
+
+  async function save() {
+    if (saving) return;
+    setFormError('');
+    const body = {
+      url: draft.url.trim(),
+      title: draft.title.trim(),
+      note: draft.note.trim(),
+      tags: draft.tags.split(',').map(t => t.trim()).filter(Boolean),
+      source: draft.source.trim(),
+    };
+    setSaving(true);
+    const url = editingId ? `/api/admin/library/${editingId}` : '/api/admin/library';
+    const res = await fetch(url, {
+      method: editingId ? 'PUT' : 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(body),
+    });
+    setSaving(false);
+    if (res.status === 401) return onAuthError();
+    if (res.ok) {
+      await load();
+      notify(editingId ? 'Kayıt güncellendi.' : 'Kayıt eklendi.');
+      setView('list');
+    } else {
+      const d = await res.json().catch(() => ({}));
+      setFormError(d.error || 'Kaydedilemedi.');
+    }
+  }
+
+  if (!items) return <Loader route="/api/admin/library" className="py-16" />;
+
+  if (view === 'editor') {
+    return (
+      <div className="space-y-4 max-w-xl">
+        <p className="font-mono text-[11px] uppercase tracking-wide" style={{ color: 'var(--fg-3)' }}>
+          {editingId ? 'Kaydı düzenle' : 'Yeni link ekle'}
+        </p>
+        <Field label="Link (URL)"><input value={draft.url} onChange={e => setDraft(d => ({ ...d, url: e.target.value }))} placeholder="https://instagram.com/p/..." className="input" /></Field>
+        <Field label="Başlık"><input value={draft.title} onChange={e => setDraft(d => ({ ...d, title: e.target.value }))} placeholder="Kısa başlık" className="input" /></Field>
+        <Field label="Not (opsiyonel)"><textarea value={draft.note} onChange={e => setDraft(d => ({ ...d, note: e.target.value }))} rows={3} className="input" /></Field>
+        <div className="grid grid-cols-2 gap-4">
+          <Field label="Etiketler (virgülle ayır)"><input value={draft.tags} onChange={e => setDraft(d => ({ ...d, tags: e.target.value }))} placeholder="fitness, tarif" className="input" /></Field>
+          <Field label="Kaynak (opsiyonel)"><input value={draft.source} onChange={e => setDraft(d => ({ ...d, source: e.target.value }))} placeholder="instagram, twitter, web…" className="input" /></Field>
+        </div>
+        {formError && <p className="body-sm" style={{ color: '#ff5d5d' }}>{formError}</p>}
+        <div className="flex items-center gap-2 pt-2">
+          <button onClick={save} disabled={saving}
+            className="px-4 py-2 rounded-xl font-semibold text-sm transition-opacity hover:opacity-90 disabled:opacity-50"
+            style={{ background: 'var(--accent)', color: '#fff' }}>{saving ? 'Kaydediliyor…' : 'Kaydet'}</button>
+          <button onClick={() => setView('list')} className="font-mono text-[11px] px-3 py-1.5 rounded-lg border" style={{ color: 'var(--fg-2)', borderColor: 'var(--border)' }}>Vazgeç</button>
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <div className="space-y-4">
+      <div className="flex flex-wrap items-center gap-2">
+        <input value={search} onChange={e => setSearch(e.target.value)} placeholder="Ara (başlık/URL)…" className="input" style={{ maxWidth: 260 }} />
+        <button onClick={openNew} className="ml-auto px-4 py-2 rounded-xl font-semibold text-sm transition-opacity hover:opacity-90"
+          style={{ background: 'var(--accent)', color: '#fff' }}>+ Yeni link</button>
+      </div>
+
+      {allTags.length > 0 && (
+        <div className="flex flex-wrap gap-1.5">
+          <button onClick={() => setActiveTag(null)}
+            className="font-mono text-[11px] px-2.5 py-1 rounded-full border"
+            style={activeTag === null ? { background: 'var(--accent)', color: '#fff', borderColor: 'var(--accent)' } : { color: 'var(--fg-3)', borderColor: 'var(--border)' }}>
+            tümü
+          </button>
+          {allTags.map(t => (
+            <button key={t} onClick={() => setActiveTag(t === activeTag ? null : t)}
+              className="font-mono text-[11px] px-2.5 py-1 rounded-full border"
+              style={activeTag === t ? { background: 'var(--accent)', color: '#fff', borderColor: 'var(--accent)' } : { color: 'var(--fg-3)', borderColor: 'var(--border)' }}>
+              {t}
+            </button>
+          ))}
+        </div>
+      )}
+
+      {filtered.length === 0 ? (
+        <p className="body-sm" style={{ color: 'var(--fg-3)' }}>
+          {items.length === 0 ? 'Henüz kayıt yok. "+ Yeni link" ile ekle.' : 'Sonuç bulunamadı.'}
+        </p>
+      ) : (
+        <div className="grid md:grid-cols-2 gap-3">
+          {filtered.map(i => (
+            <div key={i.id} className="p-4 rounded-xl border" style={{ background: 'var(--bg-card)', borderColor: 'var(--border)' }}>
+              <div className="flex items-start justify-between gap-2">
+                <a href={i.url} target="_blank" rel="noopener noreferrer" className="text-[14px] font-semibold truncate" style={{ color: 'var(--fg)' }}>
+                  {i.title}
+                </a>
+                <span className="font-mono text-[10px] flex-shrink-0" style={{ color: 'var(--fg-3)' }}>
+                  {new Date(i.createdAt).toLocaleDateString('tr-TR', { day: 'numeric', month: 'short' })}
+                </span>
+              </div>
+              <a href={i.url} target="_blank" rel="noopener noreferrer" className="font-mono text-[11px] truncate block mb-2" style={{ color: 'var(--fg-3)' }}>{i.url}</a>
+              {i.note && <p className="body-sm mb-2" style={{ color: 'var(--fg-2)' }}>{i.note}</p>}
+              <div className="flex flex-wrap items-center gap-1.5">
+                {i.source && <span className="font-mono text-[10px] px-2 py-0.5 rounded-full border" style={{ color: 'var(--fg-3)', borderColor: 'var(--border)' }}>{i.source}</span>}
+                {i.tags.map(t => (
+                  <button key={t} onClick={() => setActiveTag(t)} className="font-mono text-[10px] px-2 py-0.5 rounded-full border" style={{ color: 'var(--accent)', borderColor: 'var(--border)' }}>{t}</button>
+                ))}
+                <div className="ml-auto flex items-center gap-1">
+                  <button onClick={() => openEdit(i)} className={miniBtn} style={{ color: 'var(--fg-2)', borderColor: 'var(--border)' }} title="Düzenle">✎</button>
+                  <button onClick={() => confirmDelete(i.id, i.title)} className={miniBtn} style={{ color: '#ff5d5d', borderColor: 'var(--border)' }} title="Sil">✕</button>
+                </div>
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
+
+      {confirmState && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4" style={{ background: 'rgba(0,0,0,0.5)' }}>
+          <div className="max-w-sm w-full p-5 rounded-xl border" style={{ background: 'var(--bg-card)', borderColor: 'var(--border)' }}>
+            <p className="body-sm mb-4" style={{ color: 'var(--fg)' }}>{confirmState.msg}</p>
+            <div className="flex justify-end gap-2">
+              <button onClick={() => setConfirmState(null)} className="font-mono text-[11px] px-3 py-1.5 rounded-lg border" style={{ color: 'var(--fg-2)', borderColor: 'var(--border)' }}>Vazgeç</button>
+              <button onClick={() => { confirmState.action(); setConfirmState(null); }} className="font-mono text-[11px] px-3 py-1.5 rounded-lg" style={{ background: '#ff5d5d', color: '#fff' }}>Sil</button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

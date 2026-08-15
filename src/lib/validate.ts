@@ -3,6 +3,7 @@ import type { SkillsContent, SkillsLang } from './skills-content';
 import type {
   PageKey, HomeLang, ExperienceLang, ContactLang, ProjectsLang,
 } from './site-content';
+import type { LibraryItemInput } from './library-db';
 
 const BLOCK_TYPES = ['p', 'h2', 'h3', 'code', 'list', 'note', 'quote', 'image', 'divider'] as const;
 
@@ -239,4 +240,27 @@ export function parsePost(input: unknown): { ok: true; post: Post } | { ok: fals
     cover: str(o.cover) || undefined,
   };
   return { ok: true, post };
+}
+
+function isValidUrl(v: string): boolean {
+  try { new URL(v); return true; } catch { return false; }
+}
+
+/** Gelen JSON'ı temiz bir LibraryItemInput objesine dönüştürür; geçersizse hata mesajı verir. */
+export function parseLibraryItem(input: unknown): { ok: true; item: LibraryItemInput } | { ok: false; error: string } {
+  if (typeof input !== 'object' || input === null) return { ok: false, error: 'Geçersiz veri.' };
+  const o = input as Record<string, unknown>;
+
+  const url = str(o.url);
+  if (!url) return { ok: false, error: 'Link zorunlu.' };
+  if (!isValidUrl(url)) return { ok: false, error: 'Link geçerli bir URL olmalı.' };
+
+  const title = str(o.title);
+  if (!title) return { ok: false, error: 'Başlık zorunlu.' };
+
+  const tags = strList(o.tags);
+  const note = str(o.note) || undefined;
+  const source = str(o.source) || undefined;
+
+  return { ok: true, item: { url, title, tags, note, source } };
 }
