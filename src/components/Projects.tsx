@@ -149,23 +149,26 @@ export default function Projects() {
         {/* Tab bar: README / Live Site */}
         {selected && liveUrl && (
           <div className="flex items-center gap-1.5 mb-3">
-            {(['readme', 'live'] as const).map(mode => {
-              const isActive = viewMode === mode;
-              return (
-                <button
-                  key={mode}
-                  onClick={() => setViewMode(mode)}
-                  className="font-mono text-[11px] px-3 py-1.5 rounded-lg border transition-all duration-200"
-                  style={{
-                    background:  isActive ? 'color-mix(in srgb, var(--accent) 10%, var(--bg-card))' : 'var(--bg-card)',
-                    borderColor: isActive ? 'color-mix(in srgb, var(--accent) 35%, transparent)' : 'var(--border)',
-                    color:       isActive ? 'var(--accent)' : 'var(--fg-3)',
-                  }}
-                >
-                  {mode === 'readme' ? 'README' : 'Canlı Site'}
-                </button>
-              );
-            })}
+            <button
+              onClick={() => setViewMode('readme')}
+              className="font-mono text-[11px] px-3 py-1.5 rounded-lg border transition-all duration-200"
+              style={{
+                background:  viewMode === 'readme' ? 'color-mix(in srgb, var(--accent) 10%, var(--bg-card))' : 'var(--bg-card)',
+                borderColor: viewMode === 'readme' ? 'color-mix(in srgb, var(--accent) 35%, transparent)' : 'var(--border)',
+                color:       viewMode === 'readme' ? 'var(--accent)' : 'var(--fg-3)',
+              }}
+            >
+              README
+            </button>
+            <a
+              href={liveUrl}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="font-mono text-[11px] px-3 py-1.5 rounded-lg border transition-all duration-200 inline-flex items-center gap-1.5"
+              style={{ background: 'var(--bg-card)', borderColor: 'var(--border)', color: 'var(--fg-3)' }}
+            >
+              Canlı Site ↗
+            </a>
           </div>
         )}
 
@@ -188,7 +191,7 @@ export default function Projects() {
                 <div className="flex items-center gap-3">
                   <span className="method-get">GET</span>
                   <span className="font-mono text-[12px]" style={{ color: 'var(--fg-3)' }}>
-                    {viewMode === 'live' ? liveUrl : `/${selected.split('/')[1]}/README.md`}
+                    /{selected.split('/')[1]}/README.md
                   </span>
                 </div>
                 <span className="font-mono text-[10px]" style={{ color: 'var(--accent)', opacity: 0.6 }}>
@@ -196,42 +199,10 @@ export default function Projects() {
                 </span>
               </div>
 
-              {viewMode === 'live' && liveUrl ? (
-                <>
-                <iframe
-                  src={liveUrl}
-                  title={`${selected} — canlı site`}
-                  className="flex-1 w-full"
-                  style={{ border: 'none', background: '#fff' }}
-                  allow="camera; microphone; clipboard-write; fullscreen; autoplay"
-                  allowFullScreen
-                  sandbox="allow-scripts allow-same-origin allow-forms allow-popups allow-modals allow-downloads"
-                />
-                {/* Yeni sekmede aç — iframe içinde çalışmayan özellikler (kamera izinleri vb.) için */}
-                <div
-                  className="flex-shrink-0 px-5 py-2 flex items-center justify-between"
-                  style={{ borderTop: '1px solid var(--border)' }}
-                >
-                  <span className="font-mono text-[10px]" style={{ color: 'var(--fg-3)' }}>
-                    Bir şey çalışmıyorsa yeni sekmede açmayı dene
-                  </span>
-                  <a
-                    href={liveUrl}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="font-mono text-[11px] px-3 py-1 rounded-lg border transition-all"
-                    style={{ color: 'var(--accent)', borderColor: 'color-mix(in srgb, var(--accent) 35%, transparent)' }}
-                  >
-                    Yeni sekmede aç ↗
-                  </a>
-                </div>
-                </>
-              ) : (
-                /* README content */
-                <div className="flex-1 overflow-y-auto px-5 py-5 scrollbar-hide">
-                  <GithubViewer repoPath={selected} />
-                </div>
-              )}
+              {/* README content */}
+              <div className="flex-1 overflow-y-auto px-5 py-5 scrollbar-hide">
+                <GithubViewer repoPath={selected} />
+              </div>
             </motion.div>
           )}
         </AnimatePresence>
