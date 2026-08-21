@@ -5,6 +5,11 @@ import { motion, AnimatePresence } from 'framer-motion';
 import GithubViewer from './GithubViewer';
 import Loader from './Loader';
 
+// Bazı repoların canlı deploy adresi (repo full_name -> URL)
+const LIVE_SITES: Record<string, string> = {
+  'OmerFaruk-YILDIZ/O.M.R.': 'https://omrscan.vercel.app',
+};
+
 const LANG_COLORS: Record<string, string> = {
   Python:     '#0A84FF',
   'C#':       '#30D158',
@@ -21,6 +26,7 @@ export default function Projects() {
   const [selected, setSelected]     = useState<string | null>(null);
   const [loading, setLoading]       = useState(true);
   const [mobileView, setMobileView] = useState<'list' | 'viewer'>('list');
+  const [viewMode, setViewMode]     = useState<'readme' | 'live'>('readme');
 
   useEffect(() => {
     (async () => {
@@ -56,8 +62,11 @@ export default function Projects() {
 
   const handleSelect = (fullName: string) => {
     setSelected(fullName);
+    setViewMode('readme');
     setMobileView('viewer');
   };
+
+  const liveUrl = selected ? LIVE_SITES[selected] : undefined;
 
   return (
     <motion.div
@@ -137,10 +146,33 @@ export default function Projects() {
           All repos
         </button>
 
+        {/* Tab bar: README / Live Site */}
+        {selected && liveUrl && (
+          <div className="flex items-center gap-1.5 mb-3">
+            {(['readme', 'live'] as const).map(mode => {
+              const isActive = viewMode === mode;
+              return (
+                <button
+                  key={mode}
+                  onClick={() => setViewMode(mode)}
+                  className="font-mono text-[11px] px-3 py-1.5 rounded-lg border transition-all duration-200"
+                  style={{
+                    background:  isActive ? 'color-mix(in srgb, var(--accent) 10%, var(--bg-card))' : 'var(--bg-card)',
+                    borderColor: isActive ? 'color-mix(in srgb, var(--accent) 35%, transparent)' : 'var(--border)',
+                    color:       isActive ? 'var(--accent)' : 'var(--fg-3)',
+                  }}
+                >
+                  {mode === 'readme' ? 'README' : 'Canlı Site'}
+                </button>
+              );
+            })}
+          </div>
+        )}
+
         <AnimatePresence mode="wait">
           {selected && (
             <motion.div
-              key={selected}
+              key={`${selected}-${viewMode}`}
               initial={{ opacity: 0, x: 16 }}
               animate={{ opacity: 1, x: 0 }}
               exit={{ opacity: 0, x: -16 }}
@@ -156,7 +188,7 @@ export default function Projects() {
                 <div className="flex items-center gap-3">
                   <span className="method-get">GET</span>
                   <span className="font-mono text-[12px]" style={{ color: 'var(--fg-3)' }}>
-                    /{selected.split('/')[1]}/README.md
+                    {viewMode === 'live' ? liveUrl : `/${selected.split('/')[1]}/README.md`}
                   </span>
                 </div>
                 <span className="font-mono text-[10px]" style={{ color: 'var(--accent)', opacity: 0.6 }}>
@@ -164,10 +196,19 @@ export default function Projects() {
                 </span>
               </div>
 
-              {/* README content */}
-              <div className="flex-1 overflow-y-auto px-5 py-5 scrollbar-hide">
-                <GithubViewer repoPath={selected} />
-              </div>
+              {viewMode === 'live' && liveUrl ? (
+                <iframe
+                  src={liveUrl}
+                  title={`${selected} — canlı site`}
+                  className="flex-1 w-full"
+                  style={{ border: 'none', background: '#fff' }}
+                />
+              ) : (
+                /* README content */
+                <div className="flex-1 overflow-y-auto px-5 py-5 scrollbar-hide">
+                  <GithubViewer repoPath={selected} />
+                </div>
+              )}
             </motion.div>
           )}
         </AnimatePresence>
