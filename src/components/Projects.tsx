@@ -10,6 +10,19 @@ const LIVE_SITES: Record<string, string> = {
   'OmerFaruk-YILDIZ/O.M.R.': 'https://omrscan.vercel.app',
 };
 
+// GitHub reposu (henüz) olmayan, sadece canlı siteyle listelenen projeler
+const MANUAL_PROJECTS = [
+  {
+    id:          'manual-puanim-kod',
+    full_name:   'manual/puanim-kod',
+    name:        'Puanım Kod',
+    description: 'Canlı proje — GitHub reposu henüz yayında değil.',
+    language:    'Web',
+    manual:      true as const,
+    liveUrl:     'https://puanim.com/',
+  },
+];
+
 const LANG_COLORS: Record<string, string> = {
   Python:     '#0A84FF',
   'C#':       '#30D158',
@@ -46,10 +59,12 @@ export default function Projects() {
           data = Array.isArray(all) ? all : [];
         }
 
-        setRepos(data);
-        if (data.length > 0) setSelected(data[0].full_name);
+        const merged = [...MANUAL_PROJECTS, ...data];
+        setRepos(merged);
+        if (merged.length > 0) setSelected(merged[0].full_name);
       } catch {
-        // yoksay
+        setRepos(MANUAL_PROJECTS);
+        setSelected(MANUAL_PROJECTS[0]?.full_name ?? null);
       } finally {
         setLoading(false);
       }
@@ -66,7 +81,9 @@ export default function Projects() {
     setMobileView('viewer');
   };
 
-  const liveUrl = selected ? LIVE_SITES[selected] : undefined;
+  const selectedRepo = repos.find(r => r.full_name === selected);
+  const isManual      = !!selectedRepo?.manual;
+  const liveUrl        = isManual ? selectedRepo.liveUrl : (selected ? LIVE_SITES[selected] : undefined);
 
   return (
     <motion.div
@@ -147,7 +164,7 @@ export default function Projects() {
         </button>
 
         {/* Tab bar: README / Live Site */}
-        {selected && liveUrl && (
+        {selected && liveUrl && !isManual && (
           <div className="flex items-center gap-1.5 mb-3">
             <button
               onClick={() => setViewMode('readme')}
@@ -183,26 +200,67 @@ export default function Projects() {
               className="card overflow-hidden"
               style={{ height: '72vh', display: 'flex', flexDirection: 'column' }}
             >
-              {/* Viewer header */}
-              <div
-                className="flex items-center justify-between px-5 py-3 flex-shrink-0"
-                style={{ borderBottom: '1px solid var(--border)' }}
-              >
-                <div className="flex items-center gap-3">
-                  <span className="method-get">GET</span>
-                  <span className="font-mono text-[12px]" style={{ color: 'var(--fg-3)' }}>
-                    /{selected.split('/')[1]}/README.md
-                  </span>
-                </div>
-                <span className="font-mono text-[10px]" style={{ color: 'var(--accent)', opacity: 0.6 }}>
-                  → 200 OK
-                </span>
-              </div>
+              {isManual ? (
+                <>
+                  {/* Manual project header */}
+                  <div
+                    className="flex items-center justify-between px-5 py-3 flex-shrink-0"
+                    style={{ borderBottom: '1px solid var(--border)' }}
+                  >
+                    <div className="flex items-center gap-3">
+                      <span className="method-get">GET</span>
+                      <span className="font-mono text-[12px]" style={{ color: 'var(--fg-3)' }}>
+                        {liveUrl}
+                      </span>
+                    </div>
+                    <span className="font-mono text-[10px]" style={{ color: 'var(--accent)', opacity: 0.6 }}>
+                      → 200 OK
+                    </span>
+                  </div>
 
-              {/* README content */}
-              <div className="flex-1 overflow-y-auto px-5 py-5 scrollbar-hide">
-                <GithubViewer repoPath={selected} />
-              </div>
+                  {/* Manual project content — GitHub reposu yok, sadece canlı site */}
+                  <div className="flex-1 flex flex-col items-center justify-center gap-4 px-5 text-center">
+                    <h3 className="font-semibold text-[18px]" style={{ color: 'var(--fg)' }}>
+                      {selectedRepo?.name}
+                    </h3>
+                    <p className="font-mono text-[12px] max-w-sm" style={{ color: 'var(--fg-3)' }}>
+                      {selectedRepo?.description}
+                    </p>
+                    <a
+                      href={liveUrl}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="font-mono text-[12px] px-4 py-2 rounded-lg border transition-all"
+                      style={{ color: 'var(--accent)', borderColor: 'color-mix(in srgb, var(--accent) 35%, transparent)' }}
+                    >
+                      Canlı Siteyi Aç ↗
+                    </a>
+                  </div>
+                </>
+              ) : (
+                <>
+                  {/* Viewer header */}
+                  <div
+                    className="flex items-center justify-between px-5 py-3 flex-shrink-0"
+                    style={{ borderBottom: '1px solid var(--border)' }}
+                  >
+                    <div className="flex items-center gap-3">
+                      <span className="method-get">GET</span>
+                      <span className="font-mono text-[12px]" style={{ color: 'var(--fg-3)' }}>
+                        /{selected.split('/')[1]}/README.md
+                      </span>
+                    </div>
+                    <span className="font-mono text-[10px]" style={{ color: 'var(--accent)', opacity: 0.6 }}>
+                      → 200 OK
+                    </span>
+                  </div>
+
+                  {/* README content */}
+                  <div className="flex-1 overflow-y-auto px-5 py-5 scrollbar-hide">
+                    <GithubViewer repoPath={selected} />
+                  </div>
+                </>
+              )}
             </motion.div>
           )}
         </AnimatePresence>
