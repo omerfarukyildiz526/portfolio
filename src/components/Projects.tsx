@@ -197,12 +197,35 @@ export default function Projects() {
               </div>
 
               {viewMode === 'live' && liveUrl ? (
+                <>
                 <iframe
                   src={liveUrl}
                   title={`${selected} — canlı site`}
                   className="flex-1 w-full"
                   style={{ border: 'none', background: '#fff' }}
+                  allow="camera; microphone; clipboard-write; fullscreen; autoplay"
+                  allowFullScreen
+                  sandbox="allow-scripts allow-same-origin allow-forms allow-popups allow-modals allow-downloads"
                 />
+                {/* Yeni sekmede aç — iframe içinde çalışmayan özellikler (kamera izinleri vb.) için */}
+                <div
+                  className="flex-shrink-0 px-5 py-2 flex items-center justify-between"
+                  style={{ borderTop: '1px solid var(--border)' }}
+                >
+                  <span className="font-mono text-[10px]" style={{ color: 'var(--fg-3)' }}>
+                    Bir şey çalışmıyorsa yeni sekmede açmayı dene
+                  </span>
+                  <a
+                    href={liveUrl}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="font-mono text-[11px] px-3 py-1 rounded-lg border transition-all"
+                    style={{ color: 'var(--accent)', borderColor: 'color-mix(in srgb, var(--accent) 35%, transparent)' }}
+                  >
+                    Yeni sekmede aç ↗
+                  </a>
+                </div>
+                </>
               ) : (
                 /* README content */
                 <div className="flex-1 overflow-y-auto px-5 py-5 scrollbar-hide">
