@@ -1,13 +1,14 @@
 'use client';
 
-import { useState, useRef } from 'react';
+import { useState, useRef, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import type { ContentBlock } from '@/lib/posts';
+import type { Topic } from '@/lib/topics';
 
 type Step = 1 | 2 | 3;
 
 const EMPTY = {
-  cover: '', title: '', excerpt: '', body: '', tags: '', instagramUrl: '',
+  cover: '', title: '', excerpt: '', body: '', tags: '', instagramUrl: '', topic: '',
   symbol: '📝', gradient: ['#0d1433', '#1a2a6c'] as [string, string],
 };
 
@@ -32,6 +33,14 @@ export default function PostWizardModal({
   const [error, setError] = useState('');
   const [dragOver, setDragOver] = useState(false);
   const fileRef = useRef<HTMLInputElement>(null);
+  const [topics, setTopics] = useState<Topic[]>([]);
+
+  useEffect(() => {
+    fetch('/api/admin/topics', { cache: 'no-store' })
+      .then(r => r.json())
+      .then(d => setTopics(d.topics ?? []))
+      .catch(() => {});
+  }, []);
 
   function set<K extends keyof typeof EMPTY>(key: K, value: (typeof EMPTY)[K]) {
     setDraft(d => ({ ...d, [key]: value }));
@@ -57,6 +66,7 @@ export default function PostWizardModal({
       excerpt: draft.excerpt.trim(),
       content: bodyToBlocks(draft.body),
       tags: draft.tags.split(',').map(t => t.trim()).filter(Boolean),
+      topic: draft.topic || undefined,
       instagramUrl: draft.instagramUrl.trim() || undefined,
       cover: draft.cover || undefined,
       symbol: draft.symbol,
@@ -152,6 +162,20 @@ export default function PostWizardModal({
                 <label className="block">
                   <span className="block font-mono text-[11px] mb-1.5" style={{ color: 'var(--fg-3)' }}>İçerik (paragrafları boş satırla ayır)</span>
                   <textarea value={draft.body} onChange={e => set('body', e.target.value)} rows={7} className="input" />
+                </label>
+                <label className="block">
+                  <span className="block font-mono text-[11px] mb-1.5" style={{ color: 'var(--fg-3)' }}>Konu (opsiyonel)</span>
+                  <select value={draft.topic} onChange={e => set('topic', e.target.value)} className="input">
+                    <option value="">— konu seçme —</option>
+                    {topics.map(t => (
+                      <option key={t.slug} value={t.slug}>{t.title}</option>
+                    ))}
+                  </select>
+                  {topics.length === 0 && (
+                    <span className="block font-mono text-[10px] mt-1" style={{ color: 'var(--fg-3)' }}>
+                      Henüz konu yok — panelden &quot;Konular&quot; sekmesinden ekleyebilirsin.
+                    </span>
+                  )}
                 </label>
                 <label className="block">
                   <span className="block font-mono text-[11px] mb-1.5" style={{ color: 'var(--fg-3)' }}>Etiketler (virgülle ayır)</span>

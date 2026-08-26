@@ -5,6 +5,7 @@ import type {
 } from './site-content';
 import type { LibraryItemInput } from './library-db';
 import type { LogsProfileContent } from './logs-profile';
+import type { Topic } from './topics';
 
 const BLOCK_TYPES = ['p', 'h2', 'h3', 'code', 'list', 'note', 'quote', 'image', 'divider'] as const;
 
@@ -240,8 +241,48 @@ export function parsePost(input: unknown): { ok: true; post: Post } | { ok: fals
     published: typeof o.published === 'boolean' ? o.published : true,
     cover: str(o.cover) || undefined,
     instagramUrl: str(o.instagramUrl) || undefined,
+    topic: str(o.topic) || undefined,
   };
   return { ok: true, post };
+}
+
+/** Gelen JSON'ı temiz bir Topic objesine dönüştürür; geçersizse hata mesajı verir. */
+export function parseTopic(input: unknown): { ok: true; topic: Topic } | { ok: false; error: string } {
+  if (typeof input !== 'object' || input === null) return { ok: false, error: 'Geçersiz veri.' };
+  const o = input as Record<string, unknown>;
+
+  const title = str(o.title);
+  if (!title) return { ok: false, error: 'Başlık zorunlu.' };
+
+  let slug = str(o.slug);
+  if (!slug) {
+    slug = title.toLowerCase()
+      .replace(/ı/g, 'i').replace(/ğ/g, 'g').replace(/ü/g, 'u')
+      .replace(/ş/g, 's').replace(/ö/g, 'o').replace(/ç/g, 'c')
+      .replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '');
+  }
+  if (!/^[a-z0-9-]+$/.test(slug)) {
+    return { ok: false, error: 'Slug yalnızca küçük harf, rakam ve tire içerebilir.' };
+  }
+
+  const grad = o.gradient;
+  const gradient: [string, string] = Array.isArray(grad) && grad.length === 2
+    ? [str(grad[0]) || '#1a2a6c', str(grad[1]) || '#0d1433']
+    : ['#0d1433', '#1a2a6c'];
+
+  const createdAtRaw = str(o.createdAt);
+  const createdAt = createdAtRaw || new Date().toISOString();
+
+  const topic: Topic = {
+    slug,
+    title,
+    description: str(o.description) || undefined,
+    cover: str(o.cover) || undefined,
+    symbol: str(o.symbol) || '🏷',
+    gradient,
+    createdAt,
+  };
+  return { ok: true, topic };
 }
 
 /** Gelen JSON'ı temiz bir LogsProfileContent objesine dönüştürür; geçersizse hata mesajı verir. */

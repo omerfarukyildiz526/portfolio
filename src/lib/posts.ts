@@ -19,6 +19,7 @@ export interface Post {
   published?: boolean; // tanımsız = yayında (eski yazılarla uyum için)
   cover?: string;      // kapak görseli URL'si — /logs grid'inde kare kapak olarak da kullanılır
   instagramUrl?: string; // referans verilen Instagram gönderisi (opsiyonel)
+  topic?: string;      // bağlı olduğu konunun slug'ı (bkz. src/lib/topics.ts) — tags'ten bağımsız, elle seçilir
 }
 
 // Başlangıç içeriği. Veritabanı boşsa bu yazılar otomatik olarak MongoDB'ye

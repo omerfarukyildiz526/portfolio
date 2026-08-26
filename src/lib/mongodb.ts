@@ -6,6 +6,7 @@ import type { PageKey } from './site-content';
 import type { LibraryItem } from './library-db';
 import type { LogsProfileContent } from './logs-profile';
 import type { LogStory } from './log-stories';
+import type { Topic } from './topics';
 
 // Donanım içeriği tek bir dokümanda tutulur: { _id: 'singleton', tr, en }
 export type SkillsDoc = { _id: string } & SkillsContent;
@@ -71,4 +72,9 @@ export async function getLogsProfileCollection(): Promise<Collection<LogsProfile
 export async function getLogStoriesCollection(): Promise<Collection<LogStory>> {
   const db = await getDb();
   return db.collection<LogStory>('logStories');
+}
+
+export async function getTopicsCollection(): Promise<Collection<Topic>> {
+  const db = await getDb();
+  return db.collection<Topic>('topics');
 }

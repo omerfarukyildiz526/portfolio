@@ -4,6 +4,7 @@ import { useState, useEffect, useMemo } from 'react';
 import Link from 'next/link';
 import { motion } from 'framer-motion';
 import { Post } from '@/lib/posts';
+import type { Topic } from '@/lib/topics';
 import { useLang } from '@/lib/i18n';
 import LogsGridSkeleton from '@/components/logs/LogsGridSkeleton';
 import StoryViewer, { type ViewerStory } from '@/components/StoryViewer';
@@ -26,15 +27,7 @@ function isNew(date: string) {
   return Date.now() - t < NEW_WINDOW_DAYS * 864e5;
 }
 
-interface Topic {
-  tag: string;
-  count: number;
-  cover?: string;
-  gradient: [string, string];
-  symbol: string;
-}
-
-function TopicCard({ topic, index, onOpen }: { topic: Topic; index: number; onOpen: (tag: string) => void }) {
+function TopicCard({ topic, count, index, onOpen }: { topic: Topic; count: number; index: number; onOpen: (slug: string) => void }) {
   return (
     <motion.div
       initial={{ opacity: 0, y: 14 }} animate={{ opacity: 1, y: 0 }}
@@ -42,7 +35,7 @@ function TopicCard({ topic, index, onOpen }: { topic: Topic; index: number; onOp
     >
       <button
         type="button"
-        onClick={() => onOpen(topic.tag)}
+        onClick={() => onOpen(topic.slug)}
         className="logs-card group relative block w-full aspect-square overflow-hidden rounded-[2px] text-left"
         style={{ border: '1px solid var(--border)', background: 'var(--bg-card)' }}
       >
@@ -62,10 +55,10 @@ function TopicCard({ topic, index, onOpen }: { topic: Topic; index: number; onOp
         <div className="absolute inset-x-0 bottom-0 p-3 pt-8"
           style={{ background: 'linear-gradient(to top, rgba(10,9,8,0.92), transparent)' }}>
           <p className="logs-display text-[13px] font-semibold leading-tight" style={{ color: '#F3EEE4' }}>
-            {topic.tag}
+            {topic.title}
           </p>
           <p className="logs-mono text-[10px] mt-0.5" style={{ color: 'var(--accent)' }}>
-            {topic.count}
+            {count}
           </p>
         </div>
       </button>
@@ -130,6 +123,8 @@ export default function LogsGridPage() {
   const [posts,   setPosts]   = useState<Post[]>([]);
   const [loading, setLoading] = useState(true);
   const [activeTag, setActiveTag] = useState<string | null>(null);
+  const [activeTopic, setActiveTopic] = useState<string | null>(null);
+  const [topics, setTopics] = useState<Topic[]>([]);
   const [view, setView] = useState<'posts' | 'topics'>('posts');
   const query = useLogsSearchQuery();
   const [profile, setProfile] = useState<LogsProfileContent>(SEED_LOGS_PROFILE);
@@ -142,6 +137,10 @@ export default function LogsGridPage() {
       .then(d => setPosts(d.posts ?? []))
       .catch(() => setPosts([]))
       .finally(() => setLoading(false));
+    fetch('/api/topics', { cache: 'no-store' })
+      .then(r => r.json())
+      .then(d => setTopics(d.topics ?? []))
+      .catch(() => setTopics([]));
   }, []);
 
   useEffect(() => {
@@ -161,8 +160,11 @@ export default function LogsGridPage() {
 
   useEffect(() => {
     (() => {
-      const t = new URLSearchParams(window.location.search).get('tag');
+      const params = new URLSearchParams(window.location.search);
+      const t = params.get('tag');
+      const tp = params.get('topic');
       if (t) setActiveTag(t);
+      if (tp) { setActiveTopic(tp); setView('posts'); }
     })();
   }, []);
 
@@ -172,32 +174,31 @@ export default function LogsGridPage() {
     return [...count.entries()].sort((a, b) => b[1] - a[1]).map(([t]) => t);
   }, [posts]);
 
-  // Konular: her etiket için en güncel gönderinin kapağını/rengini kullanan özet kart.
-  const topics = useMemo<Topic[]>(() => {
-    const sorted = [...posts].sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
-    const byTag = new Map<string, Topic>();
-    sorted.forEach(p => p.tags.forEach(t => {
-      const existing = byTag.get(t);
-      if (existing) { existing.count += 1; return; }
-      byTag.set(t, { tag: t, count: 1, cover: p.cover, gradient: p.gradient, symbol: p.symbol });
-    }));
-    return [...byTag.values()].sort((a, b) => b.count - a.count);
+  // Her konu için kaç gönderi bağlı olduğunu sayar (post.topic == topic.slug).
+  const topicCounts = useMemo(() => {
+    const count = new Map<string, number>();
+    posts.forEach(p => { if (p.topic) count.set(p.topic, (count.get(p.topic) ?? 0) + 1); });
+    return count;
   }, [posts]);
 
-  const openTopic = (tag: string) => {
-    setActiveTag(tag);
+  const openTopic = (slug: string) => {
+    setActiveTopic(slug);
     setView('posts');
   };
 
+  const activeTopicObj = useMemo(() => topics.find(t => t.slug === activeTopic) ?? null, [topics, activeTopic]);
+
   const visiblePosts = useMemo(() => {
     const q = query.trim().toLowerCase();
-    let list = activeTag ? posts.filter(p => p.tags.includes(activeTag)) : posts;
+    let list = posts;
+    if (activeTopic) list = list.filter(p => p.topic === activeTopic);
+    if (activeTag) list = list.filter(p => p.tags.includes(activeTag));
     if (q) list = list.filter(p =>
       p.title.toLowerCase().includes(q) ||
       p.excerpt.toLowerCase().includes(q) ||
       p.tags.some(t => t.toLowerCase().includes(q)));
     return [...list].sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
-  }, [posts, activeTag, query]);
+  }, [posts, activeTag, activeTopic, query]);
 
   // Liste için Blog + ItemList yapısal verisi (JSON-LD) — Google'ın yazıları
   // tek tek keşfetmesi ve zengin sonuç göstermesi için.
@@ -317,7 +318,7 @@ export default function LogsGridPage() {
           {/* IG profil tab çubuğuna gönderme — iki sekme: gönderiler / konular */}
           <div className="mt-7">
             <div className="flex items-center justify-center gap-8">
-              <button type="button" onClick={() => setView('posts')}
+              <button type="button" onClick={() => { setActiveTopic(null); setView('posts'); }}
                 className="flex items-center justify-center gap-1.5 pb-3 logs-mono text-[10px] font-semibold uppercase tracking-wider transition-colors"
                 style={{ color: view === 'posts' ? 'var(--fg)' : 'var(--fg-3)', borderBottom: view === 'posts' ? '1.5px solid var(--fg)' : '1.5px solid transparent' }}>
                 <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
@@ -339,6 +340,21 @@ export default function LogsGridPage() {
             <div className="logs-tab-underline" style={{ height: 1.5 }} />
           </div>
         </motion.div>
+
+        {/* ── Aktif konu filtresi rozeti — bir konudan gelindiyse ── */}
+        {view === 'posts' && activeTopicObj && (
+          <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="flex items-center gap-2 mt-3">
+            <span className="logs-mono text-[10px] uppercase tracking-wider" style={{ color: 'var(--fg-3)' }}>
+              {lang === 'tr' ? 'konu:' : 'topic:'}
+            </span>
+            <span className="logs-mono text-[10px] px-2 py-[3px] rounded-full" style={{ color: '#fff', background: 'var(--accent)' }}>
+              {activeTopicObj.title}
+            </span>
+            <button onClick={() => setActiveTopic(null)} className="logs-mono text-[10px]" style={{ color: 'var(--fg-3)' }} aria-label={lang === 'tr' ? 'filtreyi kaldır' : 'clear filter'}>
+              ✕
+            </button>
+          </motion.div>
+        )}
 
         {/* ── Etiket filtresi — sadece gönderiler görünümünde, çizginin altında ── */}
         {view === 'posts' && !loading && posts.length > 0 && allTags.length > 0 && (
@@ -387,7 +403,7 @@ export default function LogsGridPage() {
             </div>
           ) : (
             <div className="grid grid-cols-2 md:grid-cols-3 gap-[3px] md:gap-1">
-              {topics.map((topic, i) => <TopicCard key={topic.tag} topic={topic} index={i} onOpen={openTopic} />)}
+              {topics.map((topic, i) => <TopicCard key={topic.slug} topic={topic} count={topicCounts.get(topic.slug) ?? 0} index={i} onOpen={openTopic} />)}
             </div>
           )
         ) : visiblePosts.length === 0 ? (
@@ -395,7 +411,9 @@ export default function LogsGridPage() {
             <p className="logs-mono text-[12px]" style={{ color: 'var(--fg-3)' }}>
               {query.trim()
                 ? (lang === 'tr' ? `// "${query.trim()}" için sonuç yok` : `// no results for "${query.trim()}"`)
-                : (lang === 'tr' ? `// "${activeTag}" etiketiyle yazı yok` : `// no posts tagged "${activeTag}"`)}
+                : activeTopicObj
+                  ? (lang === 'tr' ? `// "${activeTopicObj.title}" konusunda henüz yazı yok` : `// no posts in "${activeTopicObj.title}" yet`)
+                  : (lang === 'tr' ? `// "${activeTag}" etiketiyle yazı yok` : `// no posts tagged "${activeTag}"`)}
             </p>
           </div>
         ) : (

@@ -7,6 +7,7 @@ import type { Post, ContentBlock } from '@/lib/posts';
 import type { SkillsContent, SkillsLang } from '@/lib/skills-content';
 import type { SiteContent, PageKey, HomeLang, ExperienceLang, ContactLang, ProjectsLang } from '@/lib/site-content';
 import type { LibraryItemDTO } from '@/lib/library-db';
+import type { Topic } from '@/lib/topics';
 import { MD } from '@/components/Markdown';
 import Loader from '@/components/Loader';
 import LogsProfilePanel from './LogsProfilePanel';
@@ -15,7 +16,7 @@ import PostWizardModal from './PostWizardModal';
 type Status = 'loading' | 'setup' | 'login' | 'ready' | 'dberror';
 type View = 'list' | 'editor';
 type Tab = 'edit' | 'preview';
-type Section = 'overview' | 'home' | 'experience' | 'skills' | 'projects' | 'posts' | 'logsProfile' | 'contact' | 'messages' | 'library' | 'security';
+type Section = 'overview' | 'home' | 'experience' | 'skills' | 'projects' | 'posts' | 'topics' | 'logsProfile' | 'contact' | 'messages' | 'library' | 'security';
 
 // Tek satırda birleşik sekmeler — istenen sıra.
 const SECTIONS: [Section, string][] = [
@@ -25,6 +26,7 @@ const SECTIONS: [Section, string][] = [
   ['skills',      'Donanım'],
   ['projects',    'Projeler'],
   ['posts',       'Yazılar'],
+  ['topics',      'Konular'],
   ['logsProfile', 'Logs Profili'],
   ['contact',     'İletişim'],
   ['messages',    'Mesajlar'],
@@ -236,6 +238,7 @@ export default function AdminPage() {
   const [nowTs, setNowTs] = useState(() => Date.now()); // kilit geri sayımı için tikler
 
   const [posts, setPosts] = useState<Post[]>([]);
+  const [topics, setTopics] = useState<Topic[]>([]);
   const [section, setSection] = useState<Section>('overview');
   const [messages, setMessages] = useState<Message[]>([]);
   const [unread, setUnread] = useState(0);
@@ -290,6 +293,13 @@ export default function AdminPage() {
     setPosts(data.posts ?? []);
   }, []);
 
+  const loadTopics = useCallback(async () => {
+    const res = await fetch('/api/admin/topics', { cache: 'no-store' });
+    if (res.status === 401) { setStatus('login'); return; }
+    const data = await res.json();
+    setTopics(data.topics ?? []);
+  }, []);
+
   const loadMessages = useCallback(async () => {
     const res = await fetch('/api/admin/messages', { cache: 'no-store' });
     if (res.status === 401) { setStatus('login'); return; }
@@ -302,9 +312,9 @@ export default function AdminPage() {
   const finishLogin = useCallback(async () => {
     setLoginOk(true);
     await new Promise(r => setTimeout(r, 900));
-    await Promise.all([loadPosts(), loadMessages()]);
+    await Promise.all([loadPosts(), loadTopics(), loadMessages()]);
     setStatus('ready');
-  }, [loadPosts, loadMessages]);
+  }, [loadPosts, loadTopics, loadMessages]);
 
   useEffect(() => {
     (async () => {
@@ -312,7 +322,7 @@ export default function AdminPage() {
         const res = await fetch('/api/admin/session', { cache: 'no-store' });
         const d = await res.json();
         if (d.dbError) { setStatus('dberror'); return; }
-        if (d.authed) { await Promise.all([loadPosts(), loadMessages()]); setStatus('ready'); }
+        if (d.authed) { await Promise.all([loadPosts(), loadTopics(), loadMessages()]); setStatus('ready'); }
         else if (d.needsSetup) setStatus('setup');
         else {
           setStatus('login');
@@ -321,7 +331,7 @@ export default function AdminPage() {
           const ld = await lr.json().catch(() => ({}));
           if (lr.ok && !ld.codeRequired) {
             // SMTP yok → doğrudan giriş (geliştirme).
-            await Promise.all([loadPosts(), loadMessages()]);
+            await Promise.all([loadPosts(), loadTopics(), loadMessages()]);
             setStatus('ready');
           }
         }
@@ -329,7 +339,7 @@ export default function AdminPage() {
         setStatus('dberror');
       }
     })();
-  }, [loadPosts, loadMessages]);
+  }, [loadPosts, loadTopics, loadMessages]);
 
   // ---- Auth ----
   // "Şifre" gibi görünen alan aslında e-posta doğrulama kodudur (kandırma).
@@ -406,7 +416,7 @@ export default function AdminPage() {
       method: 'POST', headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ password }),
     });
-    if (res.ok) { setPassword(''); setPassword2(''); await Promise.all([loadPosts(), loadMessages()]); setStatus('ready'); }
+    if (res.ok) { setPassword(''); setPassword2(''); await Promise.all([loadPosts(), loadTopics(), loadMessages()]); setStatus('ready'); }
     else { const d = await res.json().catch(() => ({})); setLoginError(d.error || 'Kurulum başarısız.'); }
   }
 
@@ -419,11 +429,11 @@ export default function AdminPage() {
       const ld = await lr.json().catch(() => ({}));
       if (lr.ok && !ld.codeRequired) {
         // SMTP yok → doğrudan giriş (geliştirme).
-        await Promise.all([loadPosts(), loadMessages()]);
+        await Promise.all([loadPosts(), loadTopics(), loadMessages()]);
         setStatus('ready');
       }
     } catch {}
-  }, [loadPosts, loadMessages]);
+  }, [loadPosts, loadTopics, loadMessages]);
 
   async function logout() {
     await fetch('/api/admin/login', { method: 'DELETE' });
@@ -932,6 +942,8 @@ export default function AdminPage() {
               <MessagesPanel messages={messages} openMsg={openMsg} onOpen={openMessage} onToggleRead={markRead} onDelete={confirmDeleteMessage} />
             ) : section === 'library' ? (
               <LibraryPanel notify={notify} onAuthError={goLogin} />
+            ) : section === 'topics' ? (
+              <TopicsPanel topics={topics} reload={loadTopics} notify={notify} onAuthError={goLogin} />
             ) : section === 'logsProfile' ? (
               <LogsProfilePanel notify={notify} onAuthError={goLogin} />
             ) : section === 'security' ? (
@@ -1145,6 +1157,20 @@ export default function AdminPage() {
                       style={{ background: `linear-gradient(135deg, ${g[0]}, ${g[1]})`, borderColor: 'var(--border)' }} />
                   ))}
                 </div>
+
+                <Field label="Konu (opsiyonel) — bu gönderiyi bir konu altında toplar">
+                  <select value={draft.topic ?? ''} onChange={e => setField('topic', e.target.value || undefined)} className="input">
+                    <option value="">— konu seçme —</option>
+                    {topics.map(t => (
+                      <option key={t.slug} value={t.slug}>{t.title}</option>
+                    ))}
+                  </select>
+                  {topics.length === 0 && (
+                    <span className="block font-mono text-[10px] mt-1.5" style={{ color: 'var(--fg-3)' }}>
+                      Henüz konu yok — &quot;Konular&quot; sekmesinden ekleyebilirsin.
+                    </span>
+                  )}
+                </Field>
 
                 <Field label="Etiketler (virgülle ayır)">
                   <input value={tagsInput} onChange={e => setTagsInput(e.target.value)} placeholder="Python, Docker, RPA" className="input" list="tag-suggestions" />
@@ -1490,6 +1516,184 @@ function LibraryPanel({ notify, onAuthError }: { notify: (m: string, t?: 'ok' | 
                   <button onClick={() => openEdit(i)} className={miniBtn} style={{ color: 'var(--fg-2)', borderColor: 'var(--border)' }} title="Düzenle">✎</button>
                   <button onClick={() => confirmDelete(i.id, i.title)} className={miniBtn} style={{ color: '#ff5d5d', borderColor: 'var(--border)' }} title="Sil">✕</button>
                 </div>
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
+
+      {confirmState && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4" style={{ background: 'rgba(0,0,0,0.5)' }}>
+          <div className="max-w-sm w-full p-5 rounded-xl border" style={{ background: 'var(--bg-card)', borderColor: 'var(--border)' }}>
+            <p className="body-sm mb-4" style={{ color: 'var(--fg)' }}>{confirmState.msg}</p>
+            <div className="flex justify-end gap-2">
+              <button onClick={() => setConfirmState(null)} className="font-mono text-[11px] px-3 py-1.5 rounded-lg border" style={{ color: 'var(--fg-2)', borderColor: 'var(--border)' }}>Vazgeç</button>
+              <button onClick={() => { confirmState.action(); setConfirmState(null); }} className="font-mono text-[11px] px-3 py-1.5 rounded-lg" style={{ background: '#ff5d5d', color: '#fff' }}>Sil</button>
+            </div>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
+// ── Konular (/logs "konular" sekmesi için elle yönetilen konu başlıkları) ──
+interface TopicDraft { title: string; slug: string; description: string; cover: string; symbol: string; gradient: [string, string]; }
+const EMPTY_TOPIC_DRAFT: TopicDraft = { title: '', slug: '', description: '', cover: '', symbol: '🏷', gradient: ['#0d1433', '#1a2a6c'] };
+
+function TopicsPanel({ topics, reload, notify, onAuthError }: {
+  topics: Topic[]; reload: () => Promise<void>; notify: (m: string, t?: 'ok' | 'err') => void; onAuthError: () => void;
+}) {
+  const [view, setView] = useState<View>('list');
+  const [draft, setDraft] = useState<TopicDraft>(EMPTY_TOPIC_DRAFT);
+  const [editingSlug, setEditingSlug] = useState<string | null>(null);
+  const [saving, setSaving] = useState(false);
+  const [uploading, setUploading] = useState(false);
+  const [formError, setFormError] = useState('');
+  const [confirmState, setConfirmState] = useState<{ msg: string; action: () => void } | null>(null);
+
+  function openNew() {
+    setDraft(EMPTY_TOPIC_DRAFT); setEditingSlug(null); setFormError(''); setView('editor');
+  }
+  function openEdit(t: Topic) {
+    setDraft({ title: t.title, slug: t.slug, description: t.description ?? '', cover: t.cover ?? '', symbol: t.symbol, gradient: t.gradient });
+    setEditingSlug(t.slug); setFormError(''); setView('editor');
+  }
+  function confirmDelete(slug: string, title: string) {
+    setConfirmState({
+      msg: `"${title}" konusu kalıcı olarak silinecek. Bu konuya bağlı gönderiler konusuz kalır. Emin misin?`,
+      action: async () => {
+        const res = await fetch(`/api/admin/topics/${slug}`, { method: 'DELETE' });
+        if (res.status === 401) return onAuthError();
+        if (res.ok) { await reload(); notify('Konu silindi.'); }
+        else notify('Silinemedi.', 'err');
+      },
+    });
+  }
+
+  async function uploadCover(file: File) {
+    setUploading(true); setFormError('');
+    const form = new FormData();
+    form.append('file', file);
+    const res = await fetch('/api/admin/upload', { method: 'POST', body: form });
+    setUploading(false);
+    if (res.status === 401) return onAuthError();
+    const d = await res.json().catch(() => ({}));
+    if (res.ok && d.url) setDraft(v => ({ ...v, cover: d.url }));
+    else setFormError(d.error || 'Yükleme başarısız.');
+  }
+
+  async function save() {
+    if (saving) return;
+    if (!draft.title.trim()) { setFormError('Başlık zorunlu.'); return; }
+    setFormError('');
+    const body = {
+      title: draft.title.trim(),
+      slug: draft.slug.trim() || undefined,
+      description: draft.description.trim() || undefined,
+      cover: draft.cover || undefined,
+      symbol: draft.symbol,
+      gradient: draft.gradient,
+    };
+    setSaving(true);
+    const url = editingSlug ? `/api/admin/topics/${editingSlug}` : '/api/admin/topics';
+    const res = await fetch(url, {
+      method: editingSlug ? 'PUT' : 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(body),
+    });
+    setSaving(false);
+    if (res.status === 401) return onAuthError();
+    if (res.ok) {
+      await reload();
+      notify(editingSlug ? 'Konu güncellendi.' : 'Konu eklendi.');
+      setView('list');
+    } else {
+      const d = await res.json().catch(() => ({}));
+      setFormError(d.error || 'Kaydedilemedi.');
+    }
+  }
+
+  if (view === 'editor') {
+    return (
+      <div className="space-y-4 max-w-xl">
+        <p className="font-mono text-[11px] uppercase tracking-wide" style={{ color: 'var(--fg-3)' }}>
+          {editingSlug ? 'Konuyu düzenle' : 'Yeni konu ekle'}
+        </p>
+        <Field label="Başlık">
+          <input value={draft.title} onChange={e => setDraft(d => ({ ...d, title: e.target.value }))} placeholder="C# API" className="input" autoFocus />
+        </Field>
+        <Field label="Slug (URL) — boşsa başlıktan üretilir">
+          <input value={draft.slug} onChange={e => setDraft(d => ({ ...d, slug: e.target.value }))} placeholder="csharp-api" disabled={!!editingSlug} className="input" />
+        </Field>
+        <Field label="Açıklama (opsiyonel)">
+          <textarea value={draft.description} onChange={e => setDraft(d => ({ ...d, description: e.target.value }))} rows={2} className="input" />
+        </Field>
+        <Field label="Kapak görseli (opsiyonel — yoksa emoji + renk kullanılır)">
+          <div className="flex gap-2">
+            <input value={draft.cover} onChange={e => setDraft(d => ({ ...d, cover: e.target.value }))} placeholder="https://… veya yükle" className="input" />
+            <UploadButton uploading={uploading} onPick={uploadCover} />
+            {draft.cover && <button type="button" onClick={() => setDraft(d => ({ ...d, cover: '' }))} className={miniBtn} title="Kaldır" style={{ color: '#ff5d5d' }}>✕</button>}
+          </div>
+          {draft.cover && (
+            /* eslint-disable-next-line @next/next/no-img-element */
+            <img src={draft.cover} alt="" className="mt-2 w-full rounded-lg" style={{ maxHeight: 160, objectFit: 'cover', border: '1px solid var(--border)' }} />
+          )}
+        </Field>
+        <div className="grid grid-cols-2 gap-4">
+          <Field label="Emoji (kapak yoksa gösterilir)">
+            <input value={draft.symbol} onChange={e => setDraft(d => ({ ...d, symbol: e.target.value }))} className="input" maxLength={4} />
+          </Field>
+          <Field label="Renk">
+            <div className="flex gap-2">
+              <input type="color" value={draft.gradient[0]} onChange={e => setDraft(d => ({ ...d, gradient: [e.target.value, d.gradient[1]] }))}
+                className="h-10 w-full rounded-lg cursor-pointer" style={{ background: 'var(--surface)', border: '1px solid var(--border)' }} />
+              <input type="color" value={draft.gradient[1]} onChange={e => setDraft(d => ({ ...d, gradient: [d.gradient[0], e.target.value] }))}
+                className="h-10 w-full rounded-lg cursor-pointer" style={{ background: 'var(--surface)', border: '1px solid var(--border)' }} />
+            </div>
+          </Field>
+        </div>
+        {formError && <p className="body-sm" style={{ color: '#ff5d5d' }}>{formError}</p>}
+        <div className="flex items-center gap-2 pt-2">
+          <button onClick={save} disabled={saving}
+            className="px-4 py-2 rounded-xl font-semibold text-sm transition-opacity hover:opacity-90 disabled:opacity-50"
+            style={{ background: 'var(--accent)', color: '#fff' }}>{saving ? 'Kaydediliyor…' : 'Kaydet'}</button>
+          <button onClick={() => setView('list')} className="font-mono text-[11px] px-3 py-1.5 rounded-lg border" style={{ color: 'var(--fg-2)', borderColor: 'var(--border)' }}>Vazgeç</button>
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <div className="space-y-4">
+      <div className="flex items-center justify-between">
+        <p className="body-sm" style={{ color: 'var(--fg-3)' }}>
+          Konular, gönderilerin etiketlerinden bağımsızdır — gönderi eklerken hangi konuya ait olduğunu ayrıca seçersin.
+        </p>
+        <button onClick={openNew} className="flex-shrink-0 px-4 py-2 rounded-xl font-semibold text-sm transition-opacity hover:opacity-90"
+          style={{ background: 'var(--accent)', color: '#fff' }}>+ Yeni konu</button>
+      </div>
+
+      {topics.length === 0 ? (
+        <p className="body-sm" style={{ color: 'var(--fg-3)' }}>Henüz konu yok. &quot;+ Yeni konu&quot; ile ekle.</p>
+      ) : (
+        <div className="grid md:grid-cols-2 gap-3">
+          {topics.map(t => (
+            <div key={t.slug} className="flex items-center gap-3 p-4 rounded-xl border" style={{ background: 'var(--bg-card)', borderColor: 'var(--border)' }}>
+              <div className="w-12 h-12 rounded-lg flex-shrink-0 overflow-hidden flex items-center justify-center text-xl"
+                style={{ background: t.cover ? undefined : `linear-gradient(135deg, ${t.gradient[0]}, ${t.gradient[1]})` }}>
+                {t.cover ? (
+                  /* eslint-disable-next-line @next/next/no-img-element */
+                  <img src={t.cover} alt="" className="w-full h-full object-cover" />
+                ) : t.symbol}
+              </div>
+              <div className="min-w-0 flex-1">
+                <p className="text-[14px] font-semibold truncate" style={{ color: 'var(--fg)' }}>{t.title}</p>
+                <p className="font-mono text-[11px] truncate" style={{ color: 'var(--fg-3)' }}>/{t.slug}</p>
+              </div>
+              <div className="flex items-center gap-1 flex-shrink-0">
+                <button onClick={() => openEdit(t)} className={miniBtn} style={{ color: 'var(--fg-2)', borderColor: 'var(--border)' }} title="Düzenle">✎</button>
+                <button onClick={() => confirmDelete(t.slug, t.title)} className={miniBtn} style={{ color: '#ff5d5d', borderColor: 'var(--border)' }} title="Sil">✕</button>
               </div>
             </div>
           ))}
