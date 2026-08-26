@@ -26,6 +26,53 @@ function isNew(date: string) {
   return Date.now() - t < NEW_WINDOW_DAYS * 864e5;
 }
 
+interface Topic {
+  tag: string;
+  count: number;
+  cover?: string;
+  gradient: [string, string];
+  symbol: string;
+}
+
+function TopicCard({ topic, index, onOpen }: { topic: Topic; index: number; onOpen: (tag: string) => void }) {
+  return (
+    <motion.div
+      initial={{ opacity: 0, y: 14 }} animate={{ opacity: 1, y: 0 }}
+      transition={{ delay: Math.min(index * 0.04, 0.6), duration: 0.45, ease: [0.23, 1, 0.32, 1] }}
+    >
+      <button
+        type="button"
+        onClick={() => onOpen(topic.tag)}
+        className="logs-card group relative block w-full aspect-square overflow-hidden rounded-[2px] text-left"
+        style={{ border: '1px solid var(--border)', background: 'var(--bg-card)' }}
+      >
+        {topic.cover ? (
+          /* eslint-disable-next-line @next/next/no-img-element */
+          <img src={topic.cover} alt="" loading="lazy"
+            className="logs-card-cover absolute inset-0 w-full h-full object-cover transition-transform duration-300 ease-out" />
+        ) : (
+          <div className="absolute inset-0 flex items-center justify-center text-4xl"
+            style={{ background: `linear-gradient(135deg, ${topic.gradient[0]}, ${topic.gradient[1]})` }}>
+            {topic.symbol}
+          </div>
+        )}
+
+        <div className="absolute inset-0" style={{ background: 'rgba(10,9,8,0.28)' }} />
+
+        <div className="absolute inset-x-0 bottom-0 p-3 pt-8"
+          style={{ background: 'linear-gradient(to top, rgba(10,9,8,0.92), transparent)' }}>
+          <p className="logs-display text-[13px] font-semibold leading-tight" style={{ color: '#F3EEE4' }}>
+            {topic.tag}
+          </p>
+          <p className="logs-mono text-[10px] mt-0.5" style={{ color: 'var(--accent)' }}>
+            {topic.count}
+          </p>
+        </div>
+      </button>
+    </motion.div>
+  );
+}
+
 function GridCard({ post, index }: { post: Post; index: number }) {
   return (
     <motion.div
@@ -83,6 +130,7 @@ export default function LogsGridPage() {
   const [posts,   setPosts]   = useState<Post[]>([]);
   const [loading, setLoading] = useState(true);
   const [activeTag, setActiveTag] = useState<string | null>(null);
+  const [view, setView] = useState<'posts' | 'topics'>('posts');
   const query = useLogsSearchQuery();
   const [profile, setProfile] = useState<LogsProfileContent>(SEED_LOGS_PROFILE);
   const [stories, setStories] = useState<LogStoryDTO[]>([]);
@@ -123,6 +171,23 @@ export default function LogsGridPage() {
     posts.forEach(p => p.tags.forEach(t => count.set(t, (count.get(t) ?? 0) + 1)));
     return [...count.entries()].sort((a, b) => b[1] - a[1]).map(([t]) => t);
   }, [posts]);
+
+  // Konular: her etiket için en güncel gönderinin kapağını/rengini kullanan özet kart.
+  const topics = useMemo<Topic[]>(() => {
+    const sorted = [...posts].sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
+    const byTag = new Map<string, Topic>();
+    sorted.forEach(p => p.tags.forEach(t => {
+      const existing = byTag.get(t);
+      if (existing) { existing.count += 1; return; }
+      byTag.set(t, { tag: t, count: 1, cover: p.cover, gradient: p.gradient, symbol: p.symbol });
+    }));
+    return [...byTag.values()].sort((a, b) => b.count - a.count);
+  }, [posts]);
+
+  const openTopic = (tag: string) => {
+    setActiveTag(tag);
+    setView('posts');
+  };
 
   const visiblePosts = useMemo(() => {
     const q = query.trim().toLowerCase();
@@ -249,22 +314,34 @@ export default function LogsGridPage() {
             {lang === 'tr' ? profile.bio.tr : profile.bio.en}
           </p>
 
-          {/* IG profil tab çubuğuna gönderme — etiket çizginin üstünde, çizgi tab'ı ayırıyor */}
+          {/* IG profil tab çubuğuna gönderme — iki sekme: gönderiler / konular */}
           <div className="mt-7">
-            <div className="flex items-center justify-center gap-1.5 pb-3 logs-mono text-[10px] font-semibold uppercase tracking-wider"
-              style={{ color: 'var(--fg)' }}>
-              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                <rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/>
-                <rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/>
-              </svg>
-              {lang === 'tr' ? 'gönderiler' : 'posts'}
+            <div className="flex items-center justify-center gap-8">
+              <button type="button" onClick={() => setView('posts')}
+                className="flex items-center justify-center gap-1.5 pb-3 logs-mono text-[10px] font-semibold uppercase tracking-wider transition-colors"
+                style={{ color: view === 'posts' ? 'var(--fg)' : 'var(--fg-3)', borderBottom: view === 'posts' ? '1.5px solid var(--fg)' : '1.5px solid transparent' }}>
+                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                  <rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/>
+                  <rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/>
+                </svg>
+                {lang === 'tr' ? 'gönderiler' : 'posts'}
+              </button>
+              <button type="button" onClick={() => setView('topics')}
+                className="flex items-center justify-center gap-1.5 pb-3 logs-mono text-[10px] font-semibold uppercase tracking-wider transition-colors"
+                style={{ color: view === 'topics' ? 'var(--fg)' : 'var(--fg-3)', borderBottom: view === 'topics' ? '1.5px solid var(--fg)' : '1.5px solid transparent' }}>
+                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                  <path d="M20.59 13.41 11 3.83A2 2 0 0 0 9.59 3.24L4 3a1 1 0 0 0-1 1l.24 5.59a2 2 0 0 0 .59 1.41l9.58 9.59a2 2 0 0 0 2.83 0l4.35-4.35a2 2 0 0 0 0-2.83Z"/>
+                  <circle cx="7.5" cy="7.5" r="1.2" fill="currentColor" stroke="none"/>
+                </svg>
+                {lang === 'tr' ? 'konular' : 'topics'}
+              </button>
             </div>
             <div className="logs-tab-underline" style={{ height: 1.5 }} />
           </div>
         </motion.div>
 
-        {/* ── Etiket filtresi — çizginin altında, ayrı bir bölüm olarak ── */}
-        {!loading && posts.length > 0 && allTags.length > 0 && (
+        {/* ── Etiket filtresi — sadece gönderiler görünümünde, çizginin altında ── */}
+        {view === 'posts' && !loading && posts.length > 0 && allTags.length > 0 && (
           <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.1, duration: 0.5 }}
             className="flex flex-wrap items-center gap-1.5 mt-2.5 mb-4">
             <button onClick={() => setActiveTag(null)}
@@ -301,6 +378,18 @@ export default function LogsGridPage() {
               {lang === 'tr' ? 'Henüz Hiç Gönderi Yok' : 'No Posts Yet'}
             </p>
           </div>
+        ) : view === 'topics' ? (
+          topics.length === 0 ? (
+            <div className="text-center py-16">
+              <p className="logs-mono text-[12px]" style={{ color: 'var(--fg-3)' }}>
+                {lang === 'tr' ? '// henüz konu yok' : '// no topics yet'}
+              </p>
+            </div>
+          ) : (
+            <div className="grid grid-cols-2 md:grid-cols-3 gap-[3px] md:gap-1">
+              {topics.map((topic, i) => <TopicCard key={topic.tag} topic={topic} index={i} onOpen={openTopic} />)}
+            </div>
+          )
         ) : visiblePosts.length === 0 ? (
           <div className="text-center py-16">
             <p className="logs-mono text-[12px]" style={{ color: 'var(--fg-3)' }}>
