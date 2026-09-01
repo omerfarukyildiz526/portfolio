@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useMemo } from 'react';
 import Link from 'next/link';
-import { motion } from 'framer-motion';
+import { motion, AnimatePresence } from 'framer-motion';
 import { Post } from '@/lib/posts';
 import type { Topic } from '@/lib/topics';
 import { useLang } from '@/lib/i18n';
@@ -18,6 +18,15 @@ function formatCount(n: number): string {
   if (n >= 1_000) return `${(n / 1_000).toFixed(n % 1_000 === 0 ? 0 : 1)}B`;
   return String(n);
 }
+
+// Kebab (⋮) menüsünden açılan diğer sayfalar — IG'nin profil menüsüne gönderme.
+const SITE_PAGES: { path: string; label: { tr: string; en: string } }[] = [
+  { path: '/',           label: { tr: 'Ana Sayfa', en: 'Home' } },
+  { path: '/experience', label: { tr: 'Deneyim',   en: 'Experience' } },
+  { path: '/skills',     label: { tr: 'Donanım',   en: 'Skills' } },
+  { path: '/projects',   label: { tr: 'Projeler',  en: 'Projects' } },
+  { path: '/contact',    label: { tr: 'İletişim',  en: 'Contact' } },
+];
 
 // Son 14 gün içinde eklenen yazılar "NEW" rozeti alır.
 const NEW_WINDOW_DAYS = 14;
@@ -126,6 +135,7 @@ export default function LogsGridPage() {
   const [activeTopic, setActiveTopic] = useState<string | null>(null);
   const [topics, setTopics] = useState<Topic[]>([]);
   const [view, setView] = useState<'posts' | 'topics'>('posts');
+  const [routeMenuOpen, setRouteMenuOpen] = useState(false);
   const query = useLogsSearchQuery();
   const [profile, setProfile] = useState<LogsProfileContent>(SEED_LOGS_PROFILE);
   const [stories, setStories] = useState<LogStoryDTO[]>([]);
@@ -235,7 +245,53 @@ export default function LogsGridPage() {
         {/* ── Intro: IG profil başlığına gönderme yapan (ama kopyalamayan) header ── */}
         <motion.div initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.6, ease: [0.23, 1, 0.32, 1] }}>
-          <div className="flex items-start gap-5 sm:gap-9 mb-5">
+
+          {/* Üst satır: kullanıcı adı solda, sağda paylaş + diğer sayfalar (⋮) */}
+          <div className="flex items-center justify-between mb-4">
+            <div className="flex items-center gap-2 min-w-0">
+              <h1 className="logs-display text-[17px] sm:text-[20px] font-semibold leading-tight truncate" style={{ color: 'var(--fg)' }}>
+                {profile.username}
+              </h1>
+              <ShareMenu path="/logs" title={lang === 'tr' ? 'Ömer Faruk Yıldız — Logs' : 'Ömer Faruk Yıldız — Logs'} />
+            </div>
+            <div className="relative flex-shrink-0">
+              <button type="button" onClick={() => setRouteMenuOpen(o => !o)}
+                aria-label={lang === 'tr' ? 'diğer sayfalar' : 'other pages'}
+                aria-expanded={routeMenuOpen}
+                className="w-8 h-8 rounded-full flex items-center justify-center transition-colors"
+                style={{ color: 'var(--fg)', background: routeMenuOpen ? 'var(--surface)' : 'transparent' }}>
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor">
+                  <circle cx="12" cy="5" r="1.8"/><circle cx="12" cy="12" r="1.8"/><circle cx="12" cy="19" r="1.8"/>
+                </svg>
+              </button>
+
+              <AnimatePresence>
+                {routeMenuOpen && (
+                  <>
+                    <motion.div className="fixed inset-0 z-40" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
+                      onClick={() => setRouteMenuOpen(false)} />
+                    <motion.div
+                      initial={{ opacity: 0, scale: 0.95, y: -6 }} animate={{ opacity: 1, scale: 1, y: 0 }} exit={{ opacity: 0, scale: 0.95, y: -6 }}
+                      transition={{ duration: 0.16, ease: [0.23, 1, 0.32, 1] }}
+                      className="absolute right-0 top-full mt-1 z-50 w-48 rounded-xl border overflow-hidden py-1"
+                      style={{ background: 'var(--bg-card)', borderColor: 'var(--border)', boxShadow: '0 16px 40px -12px rgba(0,0,0,0.4)' }}>
+                      {SITE_PAGES.map(p => (
+                        <Link key={p.path} href={p.path} onClick={() => setRouteMenuOpen(false)}
+                          className="flex items-center justify-between gap-3 px-3.5 py-2.5 text-[13px] transition-colors hover:opacity-80"
+                          style={{ color: 'var(--fg)' }}>
+                          {lang === 'tr' ? p.label.tr : p.label.en}
+                          <span className="logs-mono text-[10px]" style={{ color: 'var(--fg-3)' }}>{p.path}</span>
+                        </Link>
+                      ))}
+                    </motion.div>
+                  </>
+                )}
+              </AnimatePresence>
+            </div>
+          </div>
+
+          {/* Avatar + stats — IG profil satırı */}
+          <div className="flex items-center gap-6 sm:gap-8 mb-4">
             {/* Avatar — aktif hikaye varsa canlı ring, yoksa nötr ring */}
             <button
               type="button"
@@ -243,7 +299,7 @@ export default function LogsGridPage() {
                 if (hasStories) setViewerOpen(true);
                 else window.open(IG_URL, '_blank', 'noopener,noreferrer');
               }}
-              className="relative flex-shrink-0 w-[76px] h-[76px] sm:w-[100px] sm:h-[100px] rounded-full transition-transform active:scale-95"
+              className="relative flex-shrink-0 w-[76px] h-[76px] sm:w-[88px] sm:h-[88px] rounded-full transition-transform active:scale-95"
               aria-label={hasStories ? (lang === 'tr' ? 'hikayeleri gör' : 'view stories') : (lang === 'tr' ? 'profili gör' : 'view profile')}>
               {/* Ring katmanı — aktif story varken döner, avatar içeriği bundan etkilenmez */}
               <div className={`absolute inset-0 rounded-full ${hasStories ? 'logs-gradient-ring' : ''}`}
@@ -257,87 +313,74 @@ export default function LogsGridPage() {
               </div>
             </button>
 
-            <div className="flex-1 min-w-0 pt-1 flex items-start justify-between gap-4">
-              {/* Sol: kullanıcı adı, ad-soyad, stats, butonlar — bio'nun yüksekliğinden etkilenmez */}
-              <div className="min-w-0">
-                <div className="flex items-center gap-2 mb-0.5">
-                  <h1 className="logs-display text-[17px] sm:text-[20px] font-semibold leading-tight truncate" style={{ color: 'var(--fg)' }}>
-                    {profile.username}
-                  </h1>
-                  <ShareMenu path="/logs" title={lang === 'tr' ? 'Ömer Faruk Yıldız — Logs' : 'Ömer Faruk Yıldız — Logs'} />
-                </div>
-
-                {profile.displayName && (
-                  <p className="text-[12px] sm:text-[13px] leading-tight mb-2.5" style={{ color: 'var(--fg-2)' }}>{profile.displayName}</p>
-                )}
-
-                {/* Stats: gönderi / takipçi / takip */}
-                <div className="flex items-center gap-4 sm:gap-6 logs-mono text-[12px] sm:text-[13px] mb-3" style={{ color: 'var(--fg-2)' }}>
-                  <span><strong style={{ color: 'var(--fg)' }}>{posts.length}</strong> {lang === 'tr' ? 'gönderi' : 'posts'}</span>
-                  <span><strong style={{ color: 'var(--fg)' }}>{formatCount(profile.followerCount)}</strong> {lang === 'tr' ? 'takipçi' : 'followers'}</span>
-                  <span><strong style={{ color: 'var(--fg)' }}>{formatCount(profile.followingCount)}</strong> {lang === 'tr' ? 'takip' : 'following'}</span>
-                </div>
-
-                {/* Butonlar */}
-                <div className="flex items-center gap-2">
-                  <a href={IG_URL} target="_blank" rel="noopener noreferrer"
-                    title={lang === 'tr' ? "Instagram'da takip et" : 'Follow on Instagram'}
-                    className="logs-follow-btn flex-1 sm:flex-none text-center logs-mono text-[12px] font-semibold px-4 py-1.5 rounded-lg"
-                    style={{ color: '#fff' }}>
-                    {lang === 'tr' ? 'Takip Et' : 'Follow'}
-                  </a>
-                  <Link href="/contact"
-                    className="flex-1 sm:flex-none text-center logs-mono text-[12px] font-semibold px-4 py-1.5 rounded-lg border transition-colors"
-                    style={{ borderColor: 'var(--border)', color: 'var(--fg)', background: 'var(--surface)' }}>
-                    {lang === 'tr' ? 'Mesaj Gönder' : 'Message'}
-                  </Link>
-                  <button type="button" onClick={openLogsSearch}
-                    aria-label={lang === 'tr' ? 'ara' : 'search'}
-                    className="w-8 h-8 flex-shrink-0 rounded-lg border flex items-center justify-center"
-                    style={{ borderColor: 'var(--border)', color: 'var(--fg-2)', background: 'var(--surface)' }}>
-                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                      <circle cx="11" cy="11" r="8" /><path d="m21 21-4.3-4.3" />
-                    </svg>
-                  </button>
-                </div>
+            {/* Stats: gönderi / takipçi / takip — sayı üstte, etiket altta (IG formatı) */}
+            <div className="flex-1 flex items-center justify-around text-center">
+              <div>
+                <p className="logs-display text-[17px] sm:text-[19px] font-bold leading-tight" style={{ color: 'var(--fg)' }}>{posts.length}</p>
+                <p className="logs-mono text-[11px] sm:text-[12px]" style={{ color: 'var(--fg-2)' }}>{lang === 'tr' ? 'gönderi' : 'posts'}</p>
               </div>
-
-              {/* Sağ: bio — kullanıcı adıyla aynı hizada başlar, ayrı bir kolon */}
-              <p className="hidden sm:block flex-shrink-0 max-w-sm text-[14px] font-medium text-right leading-relaxed pr-3"
-                style={{ color: 'var(--fg)', borderRight: '2px solid var(--accent)' }}>
-                {lang === 'tr' ? profile.bio.tr : profile.bio.en}
-              </p>
+              <div>
+                <p className="logs-display text-[17px] sm:text-[19px] font-bold leading-tight" style={{ color: 'var(--fg)' }}>{formatCount(profile.followerCount)}</p>
+                <p className="logs-mono text-[11px] sm:text-[12px]" style={{ color: 'var(--fg-2)' }}>{lang === 'tr' ? 'takipçi' : 'followers'}</p>
+              </div>
+              <div>
+                <p className="logs-display text-[17px] sm:text-[19px] font-bold leading-tight" style={{ color: 'var(--fg)' }}>{formatCount(profile.followingCount)}</p>
+                <p className="logs-mono text-[11px] sm:text-[12px]" style={{ color: 'var(--fg-2)' }}>{lang === 'tr' ? 'takip' : 'following'}</p>
+              </div>
             </div>
           </div>
 
-          {/* Bio — mobilde (sm altı) üstteki satıra sığmadığı için burada, tam genişlikte */}
-          <p className="sm:hidden text-[14px] leading-relaxed" style={{ color: 'var(--fg-2)' }}>
+          {/* Ad-soyad + bio — tam genişlik */}
+          {profile.displayName && (
+            <p className="text-[13px] font-semibold leading-tight mb-1" style={{ color: 'var(--fg)' }}>{profile.displayName}</p>
+          )}
+          <p className="text-[14px] leading-relaxed" style={{ color: 'var(--fg-2)' }}>
             {lang === 'tr' ? profile.bio.tr : profile.bio.en}
           </p>
 
-          {/* IG profil tab çubuğuna gönderme — iki sekme: gönderiler / konular */}
-          <div className="mt-7">
-            <div className="flex items-center justify-center gap-8">
-              <button type="button" onClick={() => { setActiveTopic(null); setView('posts'); }}
-                className="flex items-center justify-center gap-1.5 pb-3 logs-mono text-[10px] font-semibold uppercase tracking-wider transition-colors"
-                style={{ color: view === 'posts' ? 'var(--fg)' : 'var(--fg-3)', borderBottom: view === 'posts' ? '1.5px solid var(--fg)' : '1.5px solid transparent' }}>
-                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                  <rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/>
-                  <rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/>
-                </svg>
-                {lang === 'tr' ? 'gönderiler' : 'posts'}
-              </button>
-              <button type="button" onClick={() => setView('topics')}
-                className="flex items-center justify-center gap-1.5 pb-3 logs-mono text-[10px] font-semibold uppercase tracking-wider transition-colors"
-                style={{ color: view === 'topics' ? 'var(--fg)' : 'var(--fg-3)', borderBottom: view === 'topics' ? '1.5px solid var(--fg)' : '1.5px solid transparent' }}>
-                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                  <path d="M20.59 13.41 11 3.83A2 2 0 0 0 9.59 3.24L4 3a1 1 0 0 0-1 1l.24 5.59a2 2 0 0 0 .59 1.41l9.58 9.59a2 2 0 0 0 2.83 0l4.35-4.35a2 2 0 0 0 0-2.83Z"/>
-                  <circle cx="7.5" cy="7.5" r="1.2" fill="currentColor" stroke="none"/>
-                </svg>
-                {lang === 'tr' ? 'konular' : 'topics'}
-              </button>
-            </div>
-            <div className="logs-tab-underline" style={{ height: 1.5 }} />
+          {/* Butonlar — tam genişlik satır (IG: Takip Et / Mesaj / ara) */}
+          <div className="flex items-center gap-2 mt-3">
+            <a href={IG_URL} target="_blank" rel="noopener noreferrer"
+              title={lang === 'tr' ? "Instagram'da takip et" : 'Follow on Instagram'}
+              className="logs-follow-btn flex-1 text-center logs-mono text-[12px] font-semibold px-4 py-1.5 rounded-lg"
+              style={{ color: '#fff' }}>
+              {lang === 'tr' ? 'Takip Et' : 'Follow'}
+            </a>
+            <Link href="/contact"
+              className="flex-1 text-center logs-mono text-[12px] font-semibold px-4 py-1.5 rounded-lg border transition-colors"
+              style={{ borderColor: 'var(--border)', color: 'var(--fg)', background: 'var(--surface)' }}>
+              {lang === 'tr' ? 'Mesaj Gönder' : 'Message'}
+            </Link>
+            <button type="button" onClick={openLogsSearch}
+              aria-label={lang === 'tr' ? 'ara' : 'search'}
+              className="w-8 h-8 flex-shrink-0 rounded-lg border flex items-center justify-center"
+              style={{ borderColor: 'var(--border)', color: 'var(--fg-2)', background: 'var(--surface)' }}>
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                <circle cx="11" cy="11" r="8" /><path d="m21 21-4.3-4.3" />
+              </svg>
+            </button>
+          </div>
+
+          {/* IG profil tab çubuğuna gönderme — ikon-sadece iki sekme, aktifte alt çizgi */}
+          <div className="flex items-center justify-center gap-16 mt-6" style={{ borderTop: '1px solid var(--border)' }}>
+            <button type="button" onClick={() => { setActiveTopic(null); setView('posts'); }}
+              aria-label={lang === 'tr' ? 'gönderiler' : 'posts'}
+              className="flex items-center justify-center py-3 transition-colors"
+              style={{ color: view === 'posts' ? 'var(--fg)' : 'var(--fg-3)', borderTop: view === 'posts' ? '1.5px solid var(--fg)' : '1.5px solid transparent', marginTop: -1 }}>
+              <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8">
+                <rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/>
+                <rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/>
+              </svg>
+            </button>
+            <button type="button" onClick={() => setView('topics')}
+              aria-label={lang === 'tr' ? 'konular' : 'topics'}
+              className="flex items-center justify-center py-3 transition-colors"
+              style={{ color: view === 'topics' ? 'var(--fg)' : 'var(--fg-3)', borderTop: view === 'topics' ? '1.5px solid var(--fg)' : '1.5px solid transparent', marginTop: -1 }}>
+              <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8">
+                <path d="M20.59 13.41 11 3.83A2 2 0 0 0 9.59 3.24L4 3a1 1 0 0 0-1 1l.24 5.59a2 2 0 0 0 .59 1.41l9.58 9.59a2 2 0 0 0 2.83 0l4.35-4.35a2 2 0 0 0 0-2.83Z"/>
+                <circle cx="7.5" cy="7.5" r="1.2" fill="currentColor" stroke="none"/>
+              </svg>
+            </button>
           </div>
         </motion.div>
 
