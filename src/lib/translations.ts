@@ -12,7 +12,7 @@ export const translations = {
     },
 
     home: {
-      role:       'Yazılım Uzmanı · Barsan Global Lojistik',
+      role:       'Python & Backend Yazılım Uzmanı · Barsan Global Lojistik',
       status:     'API_SERVER_ONLINE',
       subtitle:   'Kurumsal lojistik için backend servisleri ve süreç otomasyonu geliştiriyorum.',
       subtitleAccent: 'Önce doğruluk, sonra hız.',
@@ -298,7 +298,7 @@ export const translations = {
     },
 
     home: {
-      role:          'Software Specialist · Barsan Global Logistics',
+      role:          'Python & Backend Software Specialist · Barsan Global Logistics',
       status:        'API_SERVER_ONLINE',
       subtitle:      'I build backend services and process automation for enterprise logistics.',
       subtitleAccent: 'Correctness first, then speed.',
